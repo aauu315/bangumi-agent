@@ -1,0 +1,12 @@
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+.secrets/
+state/
+work/
+*.log
+.solomd/

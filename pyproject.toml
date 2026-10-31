@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bangumi-agent"
+version = "0.1.0"
+description = "Read-only Bangumi tools for an MCP client"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2.3,<3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bangumi_agent"]
