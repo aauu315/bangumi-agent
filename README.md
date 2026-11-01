@@ -1,6 +1,23 @@
 # Bangumi Agent
 
-通过 AI Agent 完成 Bangumi 网站上的各类工作：作品查询、收藏与进度管理，以及日志、小组浏览和讨论等。普通用户的入口是本地 Android APK，自己配置模型 Key 和 Bangumi 凭据；开发者可以通过 MCP 在 Agent 客户端里调用。完整路线见 [docs/PLAN.md](docs/PLAN.md)。
+> **⚠️ 项目状态：开发中的学习项目，尚不能投入正式使用。**
+>
+> - 已完成：作品搜索/详情/章节的匿名查询、本人身份与收藏的只读查询、单集“标为看过”的本地预览草稿、3 个 MCP 工具、Android 兼容性实验 APK。
+> - 进行中：S3-03 批准、执行与未知结果处理。目前**没有任何修改 Bangumi 网站数据的功能**。
+> - 尚未开始：独立 Agent、可安装的正式 APK、日志与小组等网站业务。
+> - 当前进度以 [PROJECT_STATUS.json](PROJECT_STATUS.json) 为准，完整路线见 [docs/PLAN.md](docs/PLAN.md)。
+
+通过 AI Agent 完成 Bangumi 网站上的各类工作：作品查询、收藏与进度管理，以及日志、小组浏览和讨论等。普通用户的入口是本地 Android APK，自己配置模型 Key 和 Bangumi 凭据；开发者可以通过 MCP 在 Agent 客户端里调用。
+
+本项目为个人项目，与 Bangumi 番组计划官方无关，只通过 Bangumi 公开的 API 访问数据。
+
+## 开发方式
+
+这个项目同时是我学习 AI 应用开发的过程，由 AI 编程助手（Claude Code、Codex）辅助完成，按任务卡推进：
+
+- 每张卡标注类型。**学习卡**的核心逻辑（如分页推进、校验规则、状态转移）由我自己设计和编写，AI 负责讲解、审查和样板代码；**产出卡**以 AI 编写为主，我负责需求和验收。
+- 每张卡的学习过程（问过什么、犯过什么错、怎样修正）和验证结果记在 [docs/LOG.md](docs/LOG.md)；个人理解程度单独记录在状态文件的 `learning` 字段，不以“代码能跑”代替。
+- 给 AI 助手的工作约定见 [AGENTS.md](AGENTS.md)。
 
 ## 从哪里看
 
@@ -72,3 +89,7 @@ python -m sqlite3 state/progress.sqlite3 "SELECT plan_id, subject_id, episode_id
 ```
 
 批准和执行在 S3-03 实现，目前没有任何修改网站的入口。
+
+## 许可证
+
+[MIT](LICENSE)
