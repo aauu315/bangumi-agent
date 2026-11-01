@@ -644,6 +644,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 ## 开发流水
 
+## 2026-11-01 · 约定推进/维护两个对话的分工
+
+- AGENTS.md 新增“多个对话的分工”：推进对话写任务状态和卡片小节，维护对话写 PLAN 结构、AGENTS、README；改共享文件前先读最新内容，每步提交 git。
+
 ## 2026-11-01 · 清理 STATUS、PLAN、README 的旧写法
 
 - 按新写法重写 STATUS 的 implementation_baseline、roadmap_gaps、future_requirements（原 baseline 仍写着 S3-02 SQL 练习“已验收”，与下调后的 can_explain 不符）；PLAN 删掉 24 张卡末尾重复的套话，改写第 1、2 节和几处限定语；README 重写为入口、目录、运行三块。LOG 历史正文保留不动。
