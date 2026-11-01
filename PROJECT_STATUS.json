@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-31",
+  "updated_at": "2026-11-01",
   "project_root": "E:\\myproject\\bangumi-agent",
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
@@ -14,9 +14,9 @@
   "current_stage": "S3",
   "current_task": "S3-R",
   "next_task": "S3-R",
-  "next_action": "开始 S3-R 补学卡：按 AGENTS.md 新教学节奏，先讲 account_client.py 的 _get/get_me/_http_error 调用流程，再让用户亲手加 429 提示和测试。代码由用户写，助手只审查和提示。",
+  "next_action": "继续 S3-R 学习点 2：先讲 progress.py 的 create 校验顺序，再由用户商定并亲手新增一条拒绝规则和测试。开始前请用户用自己的话说明 dict.get 默认值和 self。",
   "implementation_baseline": "已有匿名业务层、MCP查询及本地预览、共享Python的Android实验APK。S3-01真实身份/收藏/章节只读已获用户运行证据；S3-02 SQLite单章节草稿、账号/归属/过期校验、CLI和MCP入口已有，41项离线测试通过，用户已真实创建第四集草稿，新进程持久查询及个人自主SQL练习、ID/账号约束解释已验收，S3-02完成；过期与防重复区别已讲解待复习。完整Agent、账户写入、产品化手机界面、FastAPI、服务端数据库和LangGraph未实现或未验收。",
-  "last_update_summary": "2026-10-31 S3-02 learning 下调为 can_explain；新增补学卡 S3-R 作为下一步。按 AI 应用/Agent 方向重排计划：卡片标类型，新增 S3-05 工具扩充、S4-05 第二家模型、S8-01 网站调查，S6 合并为两张卡（删 S6-03，S6-04 并入 S6-02）。",
+  "last_update_summary": "2026-11-01 S3-R 学习点 1 完成：用户亲手给 _http_error 加 5xx 提示并写离线测试（含 600 边界和变异检查），42 项测试通过；S3-R 改 active。",
   "next_session": {
     "goal": "S3-R 补学 S3-01/S3-02 的核心学习点（学习卡）",
     "timebox": "2～3 次短时段，每次 40～60 分钟",
@@ -138,8 +138,10 @@
     },
     {
       "id": "S3-R",
-      "status": "ready",
-      "evidence": [],
+      "status": "active",
+      "evidence": [
+        "docs/LOG.md#s3-r"
+      ],
       "learning": "not_checked",
       "blocker": null
     },

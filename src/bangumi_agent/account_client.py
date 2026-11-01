@@ -22,6 +22,8 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 def _http_error(status):
+    if 500 <= status < 600:
+        return AccountReadError(f"Bangumi HTTP {status}：服务器暂时出错，请稍后重试", status=status)
     hint = {
         401: "Token无效或已过期",
         403: "当前凭据无权访问",

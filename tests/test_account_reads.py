@@ -97,6 +97,21 @@ class AccountTests(unittest.TestCase):
                 if status == 404:
                     self.assertIn("不可见", str(caught.exception))
 
+    def test_http_error_500_to_599(self):
+        for status in (500, 503, 587, 600):
+            error = HTTPError("https://api.bgm.tv/v0/me", status, TOKEN, {"Authorization": TOKEN}, io.BytesIO(TOKEN.encode()))
+            with self.subTest(status=status), patch("bangumi_agent.account_client.build_opener") as opener:
+                opener.return_value.open.side_effect = error
+                with self.assertRaises(AccountReadError) as caught:
+                    self.client().get_me()
+                self.assertEqual(caught.exception.status, status)
+                if status != 600:
+                    self.assertIn("服务器暂时出错，请稍后重试", str(caught.exception))
+                else:
+                    self.assertIn("账号接口请求未成功", str(caught.exception))
+                rendered = "".join(traceback.format_exception(caught.exception))
+                self.assertNotIn(TOKEN, rendered)
+
     def test_network_failure_not_empty_success_or_secret_echo(self):
         with patch("bangumi_agent.account_client.build_opener") as opener:
             opener.return_value.open.side_effect = URLError(TOKEN)
