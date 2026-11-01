@@ -27,7 +27,10 @@ Set-Location E:\myproject\bangumi-agent
 uv sync --locked
 .\.venv\Scripts\Activate.ps1
 python -m unittest discover -s tests -v
+uv run pyright
 ```
+
+`uv run pyright` 做类型检查，设置与 VS Code 的 Pylance basic 模式一致。
 
 ## MCP 工具
 

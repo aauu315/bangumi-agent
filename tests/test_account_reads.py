@@ -239,39 +239,33 @@ class AccountTests(unittest.TestCase):
                     Settings.from_token_file(path)
                 self.assertNotIn(TOKEN, "".join(traceback.format_exception(caught.exception)))
 
-    def test_cli_explicit_default_token_file_does_not_prompt_or_read_environment(self):
-        module = load_account_script("account_file_entry")
-        with patch("sys.argv", ["account_readonly.py", "--token-file", "--me-only"]), patch.object(module.Settings, "from_token_file", return_value=Settings(access_token=TOKEN)) as from_file, patch.object(module.Settings, "from_environment") as from_env, patch.object(module.getpass, "getpass") as prompt, patch.object(module.AccountClient, "get_me", return_value=ME), contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(module.main(), 0)
-            from_file.assert_called_once_with(Path(__file__).resolve().parents[1] / ".secrets/bangumi-token.txt")
-            from_env.assert_not_called()
-            prompt.assert_not_called()
-            self.assertNotIn(TOKEN, output.getvalue())
+    def test_cli_reads_only_the_chosen_token_source(self):
+        default_file = Path(__file__).resolve().parents[1] / ".secrets/bangumi-token.txt"
+        # (extra argv, which source should be used)
+        cases = [([], "file"), (["--token-file"], "file"), (["--prompt-token"], "prompt")]
+        for extra, source in cases:
+            module = load_account_script("account_source_entry")
+            with self.subTest(argv=extra), patch("sys.argv", ["account_readonly.py", *extra, "--me-only"]), \
+                 patch.object(module.Settings, "from_token_file", return_value=Settings(access_token=TOKEN)) as from_file, \
+                 patch.object(module.Settings, "from_environment") as from_env, \
+                 patch.object(module.getpass, "getpass", return_value=TOKEN) as prompt, \
+                 patch.object(module.AccountClient, "get_me", return_value=ME), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(module.main(), 0)
+                if source == "file":
+                    from_file.assert_called_once_with(default_file)
+                    prompt.assert_not_called()
+                else:
+                    prompt.assert_called_once()
+                    from_file.assert_not_called()
+                from_env.assert_not_called()
+                self.assertNotIn(TOKEN, output.getvalue())
 
     def test_cli_token_sources_are_mutually_exclusive(self):
-        module = load_account_script("account_source_entry")
+        module = load_account_script("account_exclusive_entry")
         with patch("sys.argv", ["account_readonly.py", "--use-env", "--token-file"]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
             module.main()
         self.assertEqual(caught.exception.code, 2)
-
-
-
-    def test_cli_no_source_option_defaults_to_project_file(self):
-        module = load_account_script("account_default_entry")
-        with patch("sys.argv", ["account_readonly.py", "--me-only"]), patch.object(module.Settings, "from_token_file", return_value=Settings(access_token=TOKEN)) as from_file, patch.object(module.Settings, "from_environment") as from_env, patch.object(module.getpass, "getpass") as prompt, patch.object(module.AccountClient, "get_me", return_value=ME), contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(module.main(), 0)
-            from_file.assert_called_once_with(module.DEFAULT_TOKEN_FILE)
-            from_env.assert_not_called()
-            prompt.assert_not_called()
-
-    def test_cli_explicit_prompt_never_reads_file(self):
-        module = load_account_script("account_prompt_entry")
-        with patch("sys.argv", ["account_readonly.py", "--prompt-token", "--me-only"]), patch.object(module.Settings, "from_token_file") as from_file, patch.object(module.Settings, "from_environment") as from_env, patch.object(module.getpass, "getpass", return_value=TOKEN) as prompt, patch.object(module.AccountClient, "get_me", return_value=ME), contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(module.main(), 0)
-            prompt.assert_called_once()
-            from_file.assert_not_called()
-            from_env.assert_not_called()
-            self.assertNotIn(TOKEN, output.getvalue())
 
     def test_cli_missing_default_file_does_not_fall_back_or_request(self):
         module = load_account_script("account_missing_entry")

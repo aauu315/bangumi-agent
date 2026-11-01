@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from mcp import Client
+from mcp.types import TextContent
 from bangumi_agent.account_client import AccountClient, AccountReadError
 from bangumi_agent.settings import Settings
 from bangumi_agent.storage import PlanStore, PlanError
@@ -136,7 +137,9 @@ class PreviewTest(unittest.TestCase):
                 async with Client(mcp) as client:
                     result = await client.call_tool("preview_episode_watched", {"subject_id": 100, "episode_id": 9001})
                     self.assertFalse(result.is_error)
-                    plan = json.loads(result.content[0].text)
+                    content = result.content[0]
+                    assert isinstance(content, TextContent)
+                    plan = json.loads(content.text)
                     self.assertFalse(plan["remote_write_performed"])
                     self.assertEqual(plan["episode_id"], 9001)
         asyncio.run(asyncio.wait_for(exercise(), 10))
@@ -144,6 +147,7 @@ class PreviewTest(unittest.TestCase):
     def test_cli_create_then_show_without_reading_real_token_file(self):
         script = Path(__file__).resolve().parents[1] / "scripts/progress_preview.py"
         spec = importlib.util.spec_from_file_location("preview_cli_fixture", script)
+        assert spec is not None and spec.loader is not None
         cli = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cli)
         output = io.StringIO()
