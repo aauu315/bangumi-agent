@@ -20,6 +20,8 @@ class ProgressPreview:
         episode = self.client.get_my_episode_state(episode_id)
         if subject["subject_id"] != subject_id or subject["type"] not in (1, 2, 3, 4, 5):
             raise AccountReadError("目标条目没有有效收藏记录")
+        if subject["type"] == 5:
+            raise PlanError("目标条目已抛弃，请先更改为在看")
         if episode["subject_id"] != subject_id or episode["episode_id"] != episode_id:
             raise PlanError("所选章节不属于目标条目，已拒绝创建计划")
         if episode["type"] == 2:

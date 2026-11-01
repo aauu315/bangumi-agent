@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-R",
   "next_task": "S3-R",
-  "next_action": "继续 S3-R 学习点 2：先讲 progress.py 的 create 校验顺序，再由用户商定并亲手新增一条拒绝规则和测试。开始前请用户用自己的话说明 dict.get 默认值和 self。",
+  "next_action": "继续 S3-R 学习点 3：讲 storage.py 的 PRIMARY KEY/FOREIGN KEY/CHECK 和 with connection 事务，用户手写违反 CHECK 的 INSERT，并说明 S3-03 加状态时现有 schema 的问题；之后做复习点。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单章节“标为看过”的 SQLite 预览草稿（progress.py、storage.py）；3 个 MCP 工具；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。40 项离线测试通过，pyright（basic）0 报错。未实现：批准与执行、真实收藏写入、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-01 S3-R 学习点 1 完成：用户亲手给 _http_error 加 5xx 提示并写离线测试（含 600 边界和变异检查），42 项测试通过；S3-R 改 active。",
+  "last_update_summary": "2026-11-01 S3-R 学习点 2 完成：用户亲手加“已抛弃条目拒绝”规则和测试，自己修正字段用错的 bug，41 项测试通过、pyright 0 报错。",
   "next_session": {
     "goal": "S3-R 补学 S3-01/S3-02 的核心学习点（学习卡）",
     "timebox": "2～3 次短时段，每次 40～60 分钟",
