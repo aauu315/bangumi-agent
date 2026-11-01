@@ -644,6 +644,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 ## 开发流水
 
+## 2026-11-01 · 清理 STATUS、PLAN、README 的旧写法
+
+- 按新写法重写 STATUS 的 implementation_baseline、roadmap_gaps、future_requirements（原 baseline 仍写着 S3-02 SQL 练习“已验收”，与下调后的 can_explain 不符）；PLAN 删掉 24 张卡末尾重复的套话，改写第 1、2 节和几处限定语；README 重写为入口、目录、运行三块。LOG 历史正文保留不动。
+
 ## 2026-10-31 · 目录整理与本地 git
 
 - 删除含明文 Token 的早期实验 main.py（用户已在网站作废该 Token），pyproject 去掉只为它保留的 requests 并离线重锁。练习脚本 prcts.py、public_subject.py、try_get_subject.py、try_search.py、check_api_errors.py 移到 practice/，scripts/ 只留正式入口；删除 docs/Daily 与空的 docs/evidence；.solomd/ 加入忽略。41 项测试通过。本地 git 初始化并首次提交，未推送；暂存前核对无 Token、数据库或构建产物。历史日志中的旧路径不改。

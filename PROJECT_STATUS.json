@@ -5,23 +5,22 @@
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
   "product_objective": "通过AI Agent完成Bangumi网站各类工作；查询、收藏进度、日志、小组浏览与讨论等均属于核心范围，公开API覆盖不作为产品上限。",
-  "model_support_objective": "长期支持多家主流模型提供商，逐家适配和验收；DeepSeek作为首个兼容性验证对象，不能据首家或兼容接口推导其他模型已支持。",
+  "model_support_objective": "长期支持多家主流模型提供商，逐家适配和验收；DeepSeek 是第一家，其他家需各自验证。",
   "roadmap_gaps": [
-    "现有S0-S7主要覆盖查询与进度起步闭环；日志/小组等核心能力先由S8-01调查卡出覆盖矩阵，再拆后续卡",
-    "网站内部API的Cookie会话管理及必要网页适配尚未实现或实测；具体接口认证与可用性待核对",
-    "完整网站能力覆盖矩阵、内容发布预览批准和读回、对应Agent/MCP与APK流程待规划，不因缺公开接口而降为可选功能"
+    "日志、小组等核心业务尚无实现卡，先由 S8-01 调查并产出覆盖矩阵，再拆卡。",
+    "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S3",
   "current_task": "S3-R",
   "next_task": "S3-R",
   "next_action": "继续 S3-R 学习点 2：先讲 progress.py 的 create 校验顺序，再由用户商定并亲手新增一条拒绝规则和测试。开始前请用户用自己的话说明 dict.get 默认值和 self。",
-  "implementation_baseline": "已有匿名业务层、MCP查询及本地预览、共享Python的Android实验APK。S3-01真实身份/收藏/章节只读已获用户运行证据；S3-02 SQLite单章节草稿、账号/归属/过期校验、CLI和MCP入口已有，41项离线测试通过，用户已真实创建第四集草稿，新进程持久查询及个人自主SQL练习、ID/账号约束解释已验收，S3-02完成；过期与防重复区别已讲解待复习。完整Agent、账户写入、产品化手机界面、FastAPI、服务端数据库和LangGraph未实现或未验收。",
+  "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单章节“标为看过”的 SQLite 预览草稿（progress.py、storage.py）；3 个 MCP 工具；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。42 项离线测试通过。未实现：批准与执行、真实收藏写入、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
   "last_update_summary": "2026-11-01 S3-R 学习点 1 完成：用户亲手给 _http_error 加 5xx 提示并写离线测试（含 600 边界和变异检查），42 项测试通过；S3-R 改 active。",
   "next_session": {
     "goal": "S3-R 补学 S3-01/S3-02 的核心学习点（学习卡）",
     "timebox": "2～3 次短时段，每次 40～60 分钟",
     "steps": [
-      "学习点1：带认证的只读请求；用户给 _http_error 加 429 提示并写离线测试",
+      "学习点1（已完成）：带认证的只读请求；用户给 _http_error 加 5xx 提示并写离线测试",
       "学习点2：预览的校验顺序；用户新增一条拒绝规则并写测试",
       "学习点3：SQLite 约束与事务；用户手写违反 CHECK 的 INSERT，并说明 S3-03 加状态时的 schema 问题",
       "复习：过期与防重复的区别，用户用自己的话说"
@@ -30,11 +29,11 @@
   },
   "known_blockers": [],
   "future_requirements": [
-    "S2-01和S2-02已验收，当前采用Kotlin/Compose+Chaquopy共享Python；原生重写延后评估。仅小米14Android16/arm64和DeepSeek两种模式已测，其他模型/设备/系统及Release体积未测，阻塞HTTP立即中断未实现。",
-    "S3需用户本地Bangumi凭据及具体写批准",
-    "首个模型提供商已选择DeepSeek；真实Key仅在手机本地输入，点击测试会消耗API余额；S4完整Agent尚未实现，其他主流提供商待适配",
-    "S7需用户自行邀请非技术测试者，公开发布另行授权",
-    "S4-04 计划用 LangGraph 做 Python 状态图/恢复/人工介入对照；执行时再核对版本与环境，不预设 Android 可运行"
+    "手机端：Kotlin/Compose + Chaquopy 共享 Python。只在小米 14（Android 16, arm64）上测过；Release 包体积、其他设备未测；阻塞中的 HTTP 请求不能立即取消。",
+    "S3-03 起的账户写入需要用户本地 Bangumi 凭据，S3-04 的真实写入需要用户对具体预览批准。",
+    "模型：DeepSeek 已做手机端协议实验；完整 Agent 在 S4，第二家在 S4-05。真实调用使用用户自己的 Key 和费用。",
+    "S7 需要用户自己邀请测试者；公开发布需另行授权。",
+    "S4-04 的 LangGraph 只用于 Python/服务端路线，开工时再核对版本。"
   ],
   "tasks": [
     {
