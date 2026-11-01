@@ -1,5 +1,6 @@
 """Authenticated GET-only account reads; no writes, cookies or MCP dependency."""
 import json
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -48,7 +49,7 @@ def _pagination(limit, offset):
 class AccountClient:
     def __init__(self, settings: Settings):
         self.__token = settings.require_token()
-        self.__identity = None
+        self.__identity: dict[str, Any] | None = None
 
     def _redact(self, value):
         if isinstance(value, str):
@@ -88,7 +89,7 @@ class AccountClient:
             raise AccountReadError("账号响应必须是JSON对象")
         return data
 
-    def get_me(self):
+    def get_me(self) -> dict[str, Any]:
         """Bind this client's identity from the current token, not a supplied username."""
         if self.__identity is None:
             data = self._get("/v0/me")
@@ -98,8 +99,9 @@ class AccountClient:
             if self.__token in username:
                 raise AccountReadError("身份响应异常，已停止后续读取")
             # Do not return email, registration details or a raw server payload.
-            self.__identity = self._redact({"id": uid, "username": username,
-                                           "nickname": data.get("nickname", "")})
+            # username was checked above, so only nickname still needs redacting.
+            self.__identity = {"id": uid, "username": username,
+                               "nickname": self._redact(data.get("nickname", ""))}
         return dict(self.__identity)
 
     def _page(self, data, limit, offset, convert):

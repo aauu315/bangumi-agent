@@ -644,6 +644,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 ## 开发流水
 
+## 2026-11-01 · 修复 Pylance 报错
+
+- 用户贴出 Problems 列表（account_client.py 4 条、test_account_reads.py 31 条）。根因：`get_me` 返回 `dict(self._redact(...))`，Pylance 推断不出类型，连带 6 处误报；改为只对 nickname 脱敏并标注返回 `dict[str, Any]`（username 前面已检查不含 Token，行为不变）。测试里用真实的 Message/Request/HTTPMessage 对象代替 dict 和 None，6 处重复的脚本加载合并为 `load_account_script`，故意传 None 的一处加忽略注释。42 项测试通过；VS Code 里是否全部消失待用户确认。
+
 ## 2026-11-01 · 约定推进/维护两个对话的分工
 
 - AGENTS.md 新增“多个对话的分工”：推进对话写任务状态和卡片小节，维护对话写 PLAN 结构、AGENTS、README；改共享文件前先读最新内容，每步提交 git。

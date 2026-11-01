@@ -7,9 +7,12 @@ import os
 import traceback
 import tempfile
 import unittest
+from email.message import Message
+from http.client import HTTPMessage
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
+from urllib.request import Request
 
 from bangumi_agent.account_client import AccountClient, AccountReadError, _NoRedirect
 from bangumi_agent.settings import Settings, MissingTokenError
@@ -35,6 +38,23 @@ def collection_page():
     }]}
 
 
+def http_error(status):
+    """An HTTPError that carries TOKEN in its message, headers and body."""
+    headers = Message()
+    headers["Authorization"] = TOKEN
+    return HTTPError("https://api.bgm.tv/v0/me", status, TOKEN, headers, io.BytesIO(TOKEN.encode()))
+
+
+def load_account_script(module_name):
+    """Load scripts/account_readonly.py as a fresh module under the given name."""
+    path = Path(__file__).resolve().parents[1] / "scripts/account_readonly.py"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def episode_page(eid, offset, total=2):
     return {"total": total, "limit": 1, "offset": offset, "data": [{
         "episode": {"id": eid, "subject_id": 253, "name": "episode", "sort": offset + 1}, "type": 2,
@@ -49,7 +69,8 @@ class AccountTests(unittest.TestCase):
         for token in ("", None, "a b", "a\nb", "中文"):
             with self.subTest(length=len(token) if isinstance(token, str) else None), patch("bangumi_agent.account_client.build_opener") as opener:
                 with self.assertRaises(MissingTokenError):
-                    AccountClient(Settings(access_token=token))
+                    # None is a deliberately wrong type here.
+                    AccountClient(Settings(access_token=token))  # pyright: ignore[reportArgumentType]
                 opener.assert_not_called()
 
     def test_settings_repr_and_explicit_environment(self):
@@ -86,7 +107,7 @@ class AccountTests(unittest.TestCase):
 
     def test_http_error_semantics_and_no_secret_in_traceback(self):
         for status in (401, 403, 404):
-            error = HTTPError("https://api.bgm.tv/v0/me", status, TOKEN, {"Authorization": TOKEN}, io.BytesIO(TOKEN.encode()))
+            error = http_error(status)
             with self.subTest(status=status), patch("bangumi_agent.account_client.build_opener") as opener:
                 opener.return_value.open.side_effect = error
                 with self.assertRaises(AccountReadError) as caught:
@@ -99,7 +120,7 @@ class AccountTests(unittest.TestCase):
 
     def test_http_error_500_to_599(self):
         for status in (500, 503, 587, 600):
-            error = HTTPError("https://api.bgm.tv/v0/me", status, TOKEN, {"Authorization": TOKEN}, io.BytesIO(TOKEN.encode()))
+            error = http_error(status)
             with self.subTest(status=status), patch("bangumi_agent.account_client.build_opener") as opener:
                 opener.return_value.open.side_effect = error
                 with self.assertRaises(AccountReadError) as caught:
@@ -121,7 +142,7 @@ class AccountTests(unittest.TestCase):
 
     def test_redirect_is_rejected(self):
         with self.assertRaises(AccountReadError):
-            _NoRedirect().redirect_request(None, None, 302, "", {}, "https://example.invalid")
+            _NoRedirect().redirect_request(Request("https://api.bgm.tv/v0/me"), io.BytesIO(), 302, "", HTTPMessage(), "https://example.invalid")
 
     def test_bad_identity_prevents_collection_read(self):
         with patch("bangumi_agent.account_client.build_opener") as opener:
@@ -192,9 +213,7 @@ class AccountTests(unittest.TestCase):
             get.assert_not_called()
 
     def test_cli_identity_rejection_stops_before_collections(self):
-        spec = importlib.util.spec_from_file_location("account_readonly_entry", Path(__file__).resolve().parents[1] / "scripts/account_readonly.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = load_account_script("account_readonly_entry")
         with patch("sys.argv", ["account_readonly.py", "--prompt-token"]), patch.object(module.getpass, "getpass", return_value=TOKEN), patch.object(module.AccountClient, "get_me", return_value=ME), patch.object(module.AccountClient, "get_my_collections") as collections, patch("builtins.input", return_value="n"), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(module.main(), 0)
             collections.assert_not_called()
@@ -221,9 +240,7 @@ class AccountTests(unittest.TestCase):
                 self.assertNotIn(TOKEN, "".join(traceback.format_exception(caught.exception)))
 
     def test_cli_explicit_default_token_file_does_not_prompt_or_read_environment(self):
-        spec = importlib.util.spec_from_file_location("account_file_entry", Path(__file__).resolve().parents[1] / "scripts/account_readonly.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = load_account_script("account_file_entry")
         with patch("sys.argv", ["account_readonly.py", "--token-file", "--me-only"]), patch.object(module.Settings, "from_token_file", return_value=Settings(access_token=TOKEN)) as from_file, patch.object(module.Settings, "from_environment") as from_env, patch.object(module.getpass, "getpass") as prompt, patch.object(module.AccountClient, "get_me", return_value=ME), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(module.main(), 0)
             from_file.assert_called_once_with(Path(__file__).resolve().parents[1] / ".secrets/bangumi-token.txt")
@@ -232,9 +249,7 @@ class AccountTests(unittest.TestCase):
             self.assertNotIn(TOKEN, output.getvalue())
 
     def test_cli_token_sources_are_mutually_exclusive(self):
-        spec = importlib.util.spec_from_file_location("account_source_entry", Path(__file__).resolve().parents[1] / "scripts/account_readonly.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = load_account_script("account_source_entry")
         with patch("sys.argv", ["account_readonly.py", "--use-env", "--token-file"]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
             module.main()
         self.assertEqual(caught.exception.code, 2)
@@ -242,9 +257,7 @@ class AccountTests(unittest.TestCase):
 
 
     def test_cli_no_source_option_defaults_to_project_file(self):
-        spec = importlib.util.spec_from_file_location("account_default_entry", Path(__file__).resolve().parents[1] / "scripts/account_readonly.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = load_account_script("account_default_entry")
         with patch("sys.argv", ["account_readonly.py", "--me-only"]), patch.object(module.Settings, "from_token_file", return_value=Settings(access_token=TOKEN)) as from_file, patch.object(module.Settings, "from_environment") as from_env, patch.object(module.getpass, "getpass") as prompt, patch.object(module.AccountClient, "get_me", return_value=ME), contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(module.main(), 0)
             from_file.assert_called_once_with(module.DEFAULT_TOKEN_FILE)
@@ -252,9 +265,7 @@ class AccountTests(unittest.TestCase):
             prompt.assert_not_called()
 
     def test_cli_explicit_prompt_never_reads_file(self):
-        spec = importlib.util.spec_from_file_location("account_prompt_entry", Path(__file__).resolve().parents[1] / "scripts/account_readonly.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = load_account_script("account_prompt_entry")
         with patch("sys.argv", ["account_readonly.py", "--prompt-token", "--me-only"]), patch.object(module.Settings, "from_token_file") as from_file, patch.object(module.Settings, "from_environment") as from_env, patch.object(module.getpass, "getpass", return_value=TOKEN) as prompt, patch.object(module.AccountClient, "get_me", return_value=ME), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(module.main(), 0)
             prompt.assert_called_once()
@@ -263,9 +274,7 @@ class AccountTests(unittest.TestCase):
             self.assertNotIn(TOKEN, output.getvalue())
 
     def test_cli_missing_default_file_does_not_fall_back_or_request(self):
-        spec = importlib.util.spec_from_file_location("account_missing_entry", Path(__file__).resolve().parents[1] / "scripts/account_readonly.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = load_account_script("account_missing_entry")
         with patch("sys.argv", ["account_readonly.py", "--me-only"]), patch.object(module.Settings, "from_token_file", side_effect=MissingTokenError("missing fixture file")), patch.object(module.getpass, "getpass") as prompt, patch.object(module.AccountClient, "get_me") as get_me, contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(module.main(), 1)
             prompt.assert_not_called()
