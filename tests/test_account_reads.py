@@ -3,20 +3,16 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 import traceback
 import tempfile
 import unittest
 from email.message import Message
-from http.client import HTTPMessage
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
-from urllib.request import Request
 
 from bangumi_agent.account_client import AccountClient, AccountReadError, _NoRedirect
 from bangumi_agent.settings import Settings, MissingTokenError
-from bangumi_agent.api_client import get_subject
 
 TOKEN = "offline-fixture-token"
 ME = {"id": 42, "username": "fixture-user", "nickname": "测试昵称", "email": "not-returned@example.invalid"}
@@ -73,20 +69,13 @@ class AccountTests(unittest.TestCase):
                     AccountClient(Settings(access_token=token))  # pyright: ignore[reportArgumentType]
                 opener.assert_not_called()
 
-    def test_settings_repr_and_explicit_environment(self):
-        self.assertNotIn(TOKEN, repr(Settings(access_token=TOKEN)))
-        with patch.dict(os.environ, {"BANGUMI_ACCESS_TOKEN": TOKEN}, clear=True):
-            self.assertEqual(Settings.from_environment().require_token(), TOKEN)
-
-    def test_no_token_public_query_still_works(self):
-        with patch.dict(os.environ, {}, clear=True), patch("bangumi_agent.api_client._request_json", return_value={"id": 253, "name": "fixture"}):
-            self.assertEqual(get_subject(253)["id"], 253)
-
     def test_me_projection_and_identity_binding(self):
         client = self.client()
         with patch("bangumi_agent.account_client.build_opener") as opener:
             opener.return_value.open.side_effect = [response(ME), response(collection_page())]
             me = client.get_me()
+            # Redirects are refused, so the token is never forwarded to another host.
+            self.assertIsInstance(opener.call_args.args[0], _NoRedirect)
             self.assertEqual(set(me), {"id", "username", "nickname"})
             me["username"] = "someone-else"
             page = client.get_my_collections()
@@ -105,44 +94,27 @@ class AccountTests(unittest.TestCase):
                 self.assertNotIn(TOKEN, request.full_url)
                 self.assertIsNone(request.data)
 
-    def test_http_error_semantics_and_no_secret_in_traceback(self):
-        for status in (401, 403, 404):
-            error = http_error(status)
-            with self.subTest(status=status), patch("bangumi_agent.account_client.build_opener") as opener:
+    def test_request_failures_become_safe_errors(self):
+        # (exception raised by the transport, expected status, expected hint)
+        cases = [
+            (http_error(401), 401, "Token无效"),
+            (http_error(403), 403, "无权访问"),
+            (http_error(404), 404, "不可见"),
+            (http_error(500), 500, "服务器暂时出错"),
+            (http_error(587), 587, "服务器暂时出错"),
+            (http_error(600), 600, "账号接口请求未成功"),
+            (URLError(TOKEN), None, "连接Bangumi失败"),
+        ]
+        for error, status, hint in cases:
+            with self.subTest(error=type(error).__name__, status=status), \
+                 patch("bangumi_agent.account_client.build_opener") as opener:
                 opener.return_value.open.side_effect = error
                 with self.assertRaises(AccountReadError) as caught:
                     self.client().get_me()
                 self.assertEqual(caught.exception.status, status)
-                rendered = "".join(traceback.format_exception(caught.exception))
-                self.assertNotIn(TOKEN, rendered)
-                if status == 404:
-                    self.assertIn("不可见", str(caught.exception))
-
-    def test_http_error_500_to_599(self):
-        for status in (500, 503, 587, 600):
-            error = http_error(status)
-            with self.subTest(status=status), patch("bangumi_agent.account_client.build_opener") as opener:
-                opener.return_value.open.side_effect = error
-                with self.assertRaises(AccountReadError) as caught:
-                    self.client().get_me()
-                self.assertEqual(caught.exception.status, status)
-                if status != 600:
-                    self.assertIn("服务器暂时出错，请稍后重试", str(caught.exception))
-                else:
-                    self.assertIn("账号接口请求未成功", str(caught.exception))
-                rendered = "".join(traceback.format_exception(caught.exception))
-                self.assertNotIn(TOKEN, rendered)
-
-    def test_network_failure_not_empty_success_or_secret_echo(self):
-        with patch("bangumi_agent.account_client.build_opener") as opener:
-            opener.return_value.open.side_effect = URLError(TOKEN)
-            with self.assertRaises(AccountReadError) as caught:
-                self.client().get_me()
-            self.assertNotIn(TOKEN, "".join(traceback.format_exception(caught.exception)))
-
-    def test_redirect_is_rejected(self):
-        with self.assertRaises(AccountReadError):
-            _NoRedirect().redirect_request(Request("https://api.bgm.tv/v0/me"), io.BytesIO(), 302, "", HTTPMessage(), "https://example.invalid")
+                self.assertIn(hint, str(caught.exception))
+                # The token was put in the error's message, headers and body; none may leak.
+                self.assertNotIn(TOKEN, "".join(traceback.format_exception(caught.exception)))
 
     def test_bad_identity_prevents_collection_read(self):
         with patch("bangumi_agent.account_client.build_opener") as opener:
@@ -214,11 +186,15 @@ class AccountTests(unittest.TestCase):
 
     def test_cli_identity_rejection_stops_before_collections(self):
         module = load_account_script("account_readonly_entry")
-        with patch("sys.argv", ["account_readonly.py", "--prompt-token"]), patch.object(module.getpass, "getpass", return_value=TOKEN), patch.object(module.AccountClient, "get_me", return_value=ME), patch.object(module.AccountClient, "get_my_collections") as collections, patch("builtins.input", return_value="n"), contextlib.redirect_stdout(io.StringIO()) as output:
+        with patch("sys.argv", ["account_readonly.py", "--prompt-token"]), \
+             patch.object(module.getpass, "getpass", return_value=TOKEN), \
+             patch.object(module.AccountClient, "get_me", return_value=ME), \
+             patch.object(module.AccountClient, "get_my_collections") as collections, \
+             patch("builtins.input", return_value="n"), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(module.main(), 0)
             collections.assert_not_called()
             self.assertNotIn(TOKEN, output.getvalue())
-
 
     def test_token_file_utf8_bom_and_trailing_newline(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -261,19 +237,16 @@ class AccountTests(unittest.TestCase):
                 from_env.assert_not_called()
                 self.assertNotIn(TOKEN, output.getvalue())
 
-    def test_cli_token_sources_are_mutually_exclusive(self):
-        module = load_account_script("account_exclusive_entry")
-        with patch("sys.argv", ["account_readonly.py", "--use-env", "--token-file"]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
-            module.main()
-        self.assertEqual(caught.exception.code, 2)
-
     def test_cli_missing_default_file_does_not_fall_back_or_request(self):
         module = load_account_script("account_missing_entry")
-        with patch("sys.argv", ["account_readonly.py", "--me-only"]), patch.object(module.Settings, "from_token_file", side_effect=MissingTokenError("missing fixture file")), patch.object(module.getpass, "getpass") as prompt, patch.object(module.AccountClient, "get_me") as get_me, contextlib.redirect_stdout(io.StringIO()):
+        with patch("sys.argv", ["account_readonly.py", "--me-only"]), \
+             patch.object(module.Settings, "from_token_file", side_effect=MissingTokenError("missing fixture file")), \
+             patch.object(module.getpass, "getpass") as prompt, \
+             patch.object(module.AccountClient, "get_me") as get_me, \
+             contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(module.main(), 1)
             prompt.assert_not_called()
             get_me.assert_not_called()
-
 
 
 if __name__ == "__main__":

@@ -686,6 +686,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 ## 开发流水
 
+## 2026-11-01 · 精简 test_account_reads.py
+
+- 按新测试规则从 21 个测试精简为 15 个：401/403/404、5xx、网络失败三个测试合并为一个表格式测试；删去只测 mock 返回值的公开查询测试、只测 argparse 互斥的测试、单独测 Settings repr/环境变量的测试（repr 已在 Token 文件测试中覆盖）；重定向防护改为在身份测试里检查是否装了 _NoRedirect。变异检查：去掉 5xx 分支、保留异常链（两处）、去掉重定向防护均使测试失败。全部 35 项通过，pyright 0 报错。
+
 ## 2026-11-01 · S3-R 完成
 
 - 用户回答复习点与 create 调用经过，S3-R done/can_modify；S3-01、S3-02 learning 按练习证据改 can_modify；next_task 改 S3-03。详见 S3-R 节。
