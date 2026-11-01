@@ -656,9 +656,30 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 - 用户亲手修改：`progress.py` 新增抛弃条目拒绝分支；`tests/test_progress_preview.py` 新增 `test_discarded_subject_rejected`（payloads[1] type=5，断言 PlanError 且未创建数据库）。
 - 验证：用户报告三次运行（通过/删规则后失败/恢复后通过）正常；助手复跑全部 tests 41 项通过，`uv run pyright` 0 报错。
-- 学习点 3（SQLite 约束与事务）和复习点未开始。
+- 学习点 3 和复习点当时未开始。
+
+### 2026-11-01 · 学习点 3：SQLite 约束与事务
+
+- 用户表示 SQL 语法和主键/外键概念已忘，助手先用学生表类比补讲表/行/列、PRIMARY KEY、FOREIGN KEY、INSERT 语法，再讲 storage.py 的约束与 `with connection` 事务。
+- 用户在 Python 交互环境的内存数据库（`:memory:` + `SCHEMA`，不碰真实 state 数据库）中亲手写 INSERT：
+
+| 疑问或错误 | 原因 | 怎样修正 | 证据 |
+|---|---|---|---|
+| `OperationalError: no such column: exc` | 文本值没加单引号，SQL 把 exc 当成列名 | 改为 `'exc'` 后插入成功 | 用户贴出的终端输出 |
+| `IntegrityError: CHECK constraint failed: expires_at > created_at` | 用户故意让 created_at=3 > expires_at=1 | 故意触发，观察约束报错 | 同上 |
+| `IntegrityError: UNIQUE constraint failed: operation_plans.plan_id` | 重复插入主键 'exc' | 观察主键唯一性 | 同上 |
+| `table plan_items has 8 columns but 7 values were supplied` | 少给一个值 | 补齐 8 个值 | 同上 |
+| 不存在的 plan_id 'xcq' 插入 plan_items 成功 | 未开 `PRAGMA foreign_keys = ON`，SQLite 默认不检查外键 | 开启后同样插入报 `FOREIGN KEY constraint failed` | 用户两次贴出的输出 |
+
+- 事务问题（第二条 INSERT 被 CHECK 拦下时第一条怎样）用户答：“什么也不会剩，因为用的这个 with 语法，只要一个出错就全部不保留”。正确。
+- S3-03 入口问题（直接改 `CHECK(status = 'draft')` 对已有数据库的影响）用户答：“写的是在不存在时创建，那么旧表依然存在，不会成功”；解决思路“覆盖旧表，或者合并，改变规则”。核心判断正确；助手补充：直接覆盖会丢历史草稿，SQLite 不能用 ALTER 修改 CHECK，常见做法是建新表、拷数据、删旧表、改名，并用 `PRAGMA user_version` 记录结构版本。该迁移留给 S3-03。
+- 本节无代码改动，未运行测试。复习点（过期与防重复）和“你要能做到”中的 create 调用经过尚待用户回答。
 
 ## 开发流水
+
+## 2026-11-01 · S3-R 学习点 3 完成
+
+- 用户在内存数据库手写 INSERT，依次触发列名、CHECK、主键、列数、外键报错并验证外键默认不检查；回答了事务回滚和 S3-03 表结构迁移问题。剩复习点。详见 S3-R 节。
 
 ## 2026-11-01 · S3-R 学习点 2 完成
 
