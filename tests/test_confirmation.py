@@ -154,6 +154,15 @@ class ConfirmationTest(unittest.TestCase):
         self.assertEqual(service.check(plan_id)["status"], "failed")
         self.assertEqual(writer.calls, 1)
 
+    def test_unknown_check_is_read_only_and_verified_when_applied(self):
+        service, writer = self.service("lost_response")
+        plan_id = self.draft()
+        service.approve(plan_id)
+        service.execute(plan_id)
+        self.assertEqual(self.status(plan_id), "unknown")
+        self.assertEqual(service.check(plan_id)["status"], "verified")
+        self.assertEqual(writer.calls, 1)
+
     def test_success_with_failed_read_back_stays_unknown(self):
         service, _ = self.service()
         plan_id = self.draft()

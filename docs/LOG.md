@@ -727,7 +727,26 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - 验证：全部 47 项测试通过，`uv run pyright` 0 报错。变异检查：去掉 WHERE status、去掉冲突检查、去掉过期检查、不捕获 WriteUncertain，新测试均失败，恢复后通过。把真实 `state/progress.sqlite3` 复制到临时目录做迁移，版本 0→1，1 份计划与条目保留；原文件未改动。
 - 未做：用户的 unknown 测试；真实 CLI approve/cancel 未由用户运行；真实写入在 S3-04。
 
+### 2026-11-02 · 用户的 unknown 测试与整卡验收（核心学习点 2）
+
+| 疑问或错误 | 原因 | 怎样修正 | 证据 |
+|---|---|---|---|
+| 看不懂 `assertEqual(service.approve("old")["status"], "approved")` | 一行里同时有调用、取字典值、断言 | 助手拆成三行，并说明旧 CHECK 下写 approved 会报错，能批准即证明迁移生效 | 用户随后能写同样结构的断言 |
+| 想“不执行操作就取出 service 的状态”，找不到方法 | 状态存在 SQLite，不在 service 对象里（这样崩溃重启后仍可读） | 用 execute/check 的返回值断言；也可用 `self.status(plan_id)` 查库 | 用户的测试 |
+| 工程文件多，不知道该重点读哪里 | 助手写完未指出必读部分 | 以后工程部分完成时先列出必读的几处（本卡为 execute/check/_settle 与 transition） | — |
+
+- 用户亲手新增 `test_unknown_check_is_read_only_and_verified_when_applied`：lost_response 执行后为 unknown，check 后为 verified，writer.calls 为 1。
+- 变异检查：用户让 `check` 不调用 `_settle`，测试失败（状态仍为 unknown），恢复后通过。
+- 用户解释事务限制：“sql 是存本地的一个计划状态，但是已经发出去的是在远程的服务器上”。正确；助手补充本地回滚只撤销本地行，两边没有共同的事务。
+- 用户追问 `_settle` 中两处 executing 分支的区别，助手按“从 execute 调用（服务器说成功）/从 check 调用（unknown）× 读回失败/看过/修改前/其他”讲解。
+- 验证：全部 48 项测试通过，`uv run pyright` 0 报错。
+- 验收：通过标准各项（未批准/取消/过期/冲突 0 次写，重复提交最多 1 次写，回复丢失进入 unknown 并只读核对，重启不重发）均有离线测试；用户亲手设计状态图与故障场景、写 unknown 测试并做变异检查，能说明事务不能回滚远端写入。S3-03 done，learning=can_modify。用户尚未在真实数据库上运行 approve/cancel/status；全部为模拟写入，真实写入在 S3-04。
+
 ## 开发流水
+
+## 2026-11-02 · S3-03 完成
+
+- 用户写回复丢失→unknown→verified 测试并做变异检查，解释事务不能回滚远端写入；48 项测试通过。S3-03 done/can_modify，S3-04 ready。详见 S3-03 节。
 
 ## 2026-11-02 · S3-03 工程部分
 
