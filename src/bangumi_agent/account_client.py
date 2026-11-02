@@ -167,7 +167,7 @@ class AccountClient:
         return self._redact({"subject_id": subject_id, "type": row["type"],
                              "name": subject.get("name_cn") or subject.get("name") or ""})
 
-    def get_my_episode_state(self, episode_id):
+    def get_my_episode_state(self, episode_id) -> dict[str, Any]:
         """Read one episode and its subject ID, without changing its state."""
         _positive(episode_id, "episode_id")
         self.get_me()
@@ -177,9 +177,9 @@ class AccountClient:
                 or episode["id"] != episode_id or type(episode.get("subject_id")) is not int
                 or episode["subject_id"] <= 0 or type(state) is not int or state not in (0, 1, 2, 3)):
             raise AccountReadError("章节身份、所属条目或收藏状态无效")
-        return self._redact({"episode_id": episode_id, "subject_id": episode["subject_id"],
-                             "type": state, "sort": episode.get("sort"),
-                             "name": episode.get("name_cn") or episode.get("name") or ""})
+        return {"episode_id": episode_id, "subject_id": episode["subject_id"],
+                "type": state, "sort": episode.get("sort"),
+                "name": self._redact(episode.get("name_cn") or episode.get("name") or "")}
 
     def get_my_episode_states(self, subject_id, limit=40, offset=0):
         """One page of actual episode IDs and this token owner's collection states."""

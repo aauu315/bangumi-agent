@@ -718,7 +718,20 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - “执行入口不接受模型自报 confirmed”：用户答“需要用户真实确认”。
 - 本节无代码改动。下一步：助手写工程部分（表结构迁移、状态迁移存储、模拟执行器、CLI），用户写“响应丢失→unknown→只读核对”的测试。
 
+### 2026-11-02 · 工程部分（助手编写）
+
+- `storage.py`：`PRAGMA user_version` 记录表结构版本；旧库（版本 0，`CHECK(status = 'draft')`）在一个事务里建新表、拷数据、删旧表、改名，保留原草稿；新库直接建版本 1。新增 `updated_at`、`detail` 两列，`TRANSITIONS` 列出允许的转换，`transition` 用 `UPDATE ... WHERE status = 旧状态` 实现比较并交换，两个调用者只有一个成功，作为执行锁与单次消费。新增 `get_plan` 可查看任意状态。
+- `confirmation.py`：`ExecutionService` 的 approve/cancel/execute/check。execute 只认数据库中的 approved，执行前查过期、重新读网站核对 before 状态，冲突转 rejected；抢到 executing 后才调用写入；4xx→failed，5xx/超时/回复丢失→unknown；回复成功后读回为看过才 verified，读回不一致或读回失败→unknown。check 把重启后残留的 executing 转 unknown，只读核对，不重发。`SimulatedWriter` 模拟 success/rejected/server_error/lost_response，不联网。MCP 不提供批准或执行工具。
+- `scripts/progress_preview.py` 新增 status/approve/cancel 子命令；执行命令留到 S3-04 接真实写入。`account_client.get_my_episode_state` 补返回类型标注。
+- `tests/test_confirmation.py` 12 项：旧库迁移保留草稿、非法转换、未批准/取消/批准后取消/过期/冲突均 0 次写、重复执行最多 1 次写、锁只让一个调用者成功、4xx/5xx 结果、unknown 只读核对为 failed、成功但读回失败保持 unknown、重启后核对不重发、MCP 无批准/执行工具。“回复丢失→unknown→只读核对”留给用户写。
+- 验证：全部 47 项测试通过，`uv run pyright` 0 报错。变异检查：去掉 WHERE status、去掉冲突检查、去掉过期检查、不捕获 WriteUncertain，新测试均失败，恢复后通过。把真实 `state/progress.sqlite3` 复制到临时目录做迁移，版本 0→1，1 份计划与条目保留；原文件未改动。
+- 未做：用户的 unknown 测试；真实 CLI approve/cancel 未由用户运行；真实写入在 S3-04。
+
 ## 开发流水
+
+## 2026-11-02 · S3-03 工程部分
+
+- 助手写表结构迁移、状态转换存储、ExecutionService 与模拟写入、CLI approve/cancel/status 和 12 项测试；47 项通过、pyright 0 报错。详见 S3-03 节。
 
 ## 2026-11-02 · S3-03 状态图定稿
 

@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-03",
   "next_task": "S3-03",
-  "next_action": "S3-03 状态图已定稿（见 LOG S3-03 节）。下一步助手写工程部分：PRAGMA user_version 表结构迁移、状态迁移存储、模拟执行器与 CLI；随后用户写“响应丢失→unknown→只读核对”测试。",
+  "next_action": "S3-03 工程部分已完成。下一步由用户在 tests/test_confirmation.py 写“回复丢失（lost_response）→unknown→只读核对为 verified、写入只发生 1 次”的测试并做变异检查；之后用户口头解释 SQLite 事务为何不能回滚 Bangumi HTTP 写入。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单章节“标为看过”的 SQLite 预览草稿（progress.py、storage.py）；3 个 MCP 工具；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。35 项离线测试通过，pyright（basic）0 报错。未实现：批准与执行、真实收藏写入、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-02 S3-03 开工：用户画出状态图并答完 7 个故障场景，决定批准由用户一键确认、执行交给 Agent；尚无代码改动。",
+  "last_update_summary": "2026-11-02 S3-03 工程部分完成：表结构迁移、状态转换锁、ExecutionService、模拟写入、CLI approve/cancel/status，47 项测试通过；等用户写 unknown 测试。",
   "next_session": {
     "goal": "S3-03 批准、执行和未知结果状态机（学习卡）",
     "timebox": "见 PLAN S3-03 卡",

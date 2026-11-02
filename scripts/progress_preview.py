@@ -1,4 +1,4 @@
-"""Create/show local previews. No remote write command is provided."""
+"""Create, approve or cancel local plans. No remote write command is provided yet (S3-04)."""
 import argparse
 import getpass
 import sqlite3
@@ -13,6 +13,13 @@ from bangumi_agent.account_client import AccountClient, AccountReadError
 from bangumi_agent.settings import Settings, MissingTokenError
 from bangumi_agent.storage import PlanStore, PlanError
 from bangumi_agent.progress import ProgressPreview
+from bangumi_agent.confirmation import ExecutionService, SimulatedWriter
+
+STATUS_TEXT = {
+    "draft": "草稿，未批准", "approved": "已批准，尚未执行", "cancelled": "已取消",
+    "expired": "已过期", "rejected": "执行前检查未通过，已拒绝", "executing": "执行中或执行被中断",
+    "verified": "已执行并读回核实", "failed": "未生效", "unknown": "结果未知，需要只读核对",
+}
 
 
 def main():
@@ -29,6 +36,9 @@ def main():
     create.add_argument("--ttl-seconds", type=int, default=900)
     show = commands.add_parser("show", help="验证当前账号并查看未过期草稿快照")
     show.add_argument("plan_id")
+    for name, text in (("status", "查看任意状态的计划"), ("approve", "批准草稿（只记录在本地，不修改网站）"),
+                       ("cancel", "取消草稿或已批准的计划")):
+        commands.add_parser(name, help=text).add_argument("plan_id")
     args = parser.parse_args()
     try:
         if args.prompt_token:
@@ -39,18 +49,28 @@ def main():
             settings = Settings.from_environment()
         else:
             settings = Settings.from_token_file(args.token_file)
-        service = ProgressPreview(AccountClient(settings), PlanStore(args.db))
+        client, store = AccountClient(settings), PlanStore(args.db)
         settings = None
-        plan = (service.create(args.subject_id, args.episode_id, args.ttl_seconds)
-                if args.command == "create" else service.show(args.plan_id))
+        preview = ProgressPreview(client, store)
+        # Writer is never called by approve/cancel/status; execution arrives with S3-04.
+        confirm = ExecutionService(client, store, SimulatedWriter())
+        plan = {
+            "create": lambda: preview.create(args.subject_id, args.episode_id, args.ttl_seconds),
+            "show": lambda: preview.show(args.plan_id),
+            "status": lambda: confirm.store.get_plan(args.plan_id, account_id=client.get_me()["id"]),
+            "approve": lambda: confirm.approve(args.plan_id),
+            "cancel": lambda: confirm.cancel(args.plan_id),
+        }[args.command]()
         labels = {0: "未收藏", 1: "想看", 2: "看过", 3: "抛弃"}
         print(f"计划ID：{plan['plan_id']}\n账号ID：{plan['account_id']}")
         print(f"条目：{plan['subject_name']}（{plan['subject_id']}）")
         print(f"章节：第{plan['episode_sort']}集 {plan['episode_name']}（{plan['episode_id']}）")
         print(f"拟修改：{labels[plan['before_type']]} → {labels[plan['after_type']]}")
-        print(f"状态：{plan['status']}（草稿）；过期时间：{datetime.fromtimestamp(plan['expires_at']).astimezone().isoformat(timespec='seconds')}")
+        print(f"状态：{plan['status']}（{STATUS_TEXT[plan['status']]}）；过期时间：{datetime.fromtimestamp(plan['expires_at']).astimezone().isoformat(timespec='seconds')}")
         print(f"本地数据库：{args.db.resolve()}")
-        print("这是创建时的状态快照；未批准、未执行，未修改Bangumi收藏。")
+        if plan.get("detail"):
+            print(f"说明：{plan['detail']}")
+        print("以上修改前状态是创建时的快照；本命令没有修改Bangumi收藏。")
         return 0
     except (ValueError, AccountReadError) as exc:
         print(f"未完成：{exc}")

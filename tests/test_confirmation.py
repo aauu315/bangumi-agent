@@ -1,0 +1,189 @@
+"""Offline S3-03 state machine: fake site, simulated writer, temporary SQLite only."""
+import asyncio
+import sqlite3
+import tempfile
+import unittest
+from contextlib import closing
+from pathlib import Path
+from typing import Any
+
+from mcp import Client
+from bangumi_agent.account_client import AccountReadError
+from bangumi_agent.confirmation import ExecutionService, SimulatedWriter
+from bangumi_agent.mcp_server import mcp
+from bangumi_agent.storage import PlanError, PlanStore, SCHEMA_VERSION
+
+# The S3-02 layout, before status could be anything but 'draft'.
+OLD_SCHEMA = """
+CREATE TABLE operation_plans (
+    plan_id TEXT PRIMARY KEY, account_id INTEGER NOT NULL CHECK(account_id > 0),
+    created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL CHECK(expires_at > created_at),
+    status TEXT NOT NULL CHECK(status = 'draft'));
+CREATE TABLE plan_items (
+    plan_id TEXT PRIMARY KEY REFERENCES operation_plans(plan_id),
+    subject_id INTEGER NOT NULL CHECK(subject_id > 0), episode_id INTEGER NOT NULL CHECK(episode_id > 0),
+    subject_name TEXT NOT NULL, episode_name TEXT NOT NULL, episode_sort TEXT NOT NULL,
+    before_type INTEGER NOT NULL CHECK(before_type IN (0, 1, 3)),
+    after_type INTEGER NOT NULL CHECK(after_type = 2));
+INSERT INTO operation_plans VALUES ('old', 42, 100, 5000, 'draft');
+INSERT INTO plan_items VALUES ('old', 100, 9001, '测试作品', '小雪', '4', 0, 2);
+"""
+
+
+class FakeSite:
+    """Reads for one account and one episode. A writer's on_write updates the state."""
+
+    def __init__(self, state=0):
+        self.state, self.reads, self.fail_reads = state, 0, False
+
+    def get_me(self) -> dict[str, Any]:
+        return {"id": 42, "username": "fixture-user", "nickname": ""}
+
+    def get_my_episode_state(self, episode_id: int) -> dict[str, Any]:
+        self.reads += 1
+        if self.fail_reads:
+            raise AccountReadError("模拟：读回超时")
+        return {"episode_id": episode_id, "subject_id": 100, "type": self.state, "sort": 4, "name": "小雪"}
+
+    def apply_write(self, episode_id: int) -> None:
+        self.state = 2
+
+
+class ConfirmationTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.path = Path(self.temp.name) / "progress.sqlite3"
+        self.store = PlanStore(self.path)
+        self.site = FakeSite()
+        self.now = 1000
+
+    def service(self, outcome="success") -> tuple[ExecutionService, SimulatedWriter]:
+        writer = SimulatedWriter(outcome, on_write=self.site.apply_write)
+        return ExecutionService(self.site, self.store, writer, lambda: self.now), writer
+
+    def draft(self) -> str:
+        return self.store.create(account_id=42, subject_id=100, episode_id=9001, subject_name="测试作品",
+                                 episode_name="小雪", episode_sort=4, before_type=0,
+                                 created_at=1000, expires_at=1900)
+
+    def status(self, plan_id) -> str:
+        return self.store.get_plan(plan_id, account_id=42)["status"]
+
+    def test_old_database_is_migrated_and_keeps_its_draft(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.executescript(OLD_SCHEMA)
+        service, _ = self.service()
+        self.assertEqual(service.approve("old")["status"], "approved")
+        with closing(sqlite3.connect(self.path)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
+            self.assertEqual(connection.execute("SELECT count(*) FROM plan_items").fetchone()[0], 1)
+
+    def test_only_listed_transitions_are_allowed(self):
+        plan_id = self.draft()
+        for source, target in (("draft", "executing"), ("draft", "verified"), ("verified", "failed")):
+            with self.subTest(move=f"{source}->{target}"), self.assertRaises(PlanError):
+                self.store.transition(plan_id, account_id=42, from_status=source, to_status=target, now=1000)
+        self.assertEqual(self.status(plan_id), "draft")
+
+    def test_execution_refused_without_valid_approval_makes_no_write(self):
+        cases = {
+            "not approved": ("draft", lambda s, p: None),
+            "cancelled": ("cancelled", lambda s, p: s.cancel(p)),
+            "cancelled after approval": ("cancelled", lambda s, p: (s.approve(p), s.cancel(p))),
+        }
+        for name, (expected, prepare) in cases.items():
+            with self.subTest(name):
+                service, writer = self.service()
+                plan_id = self.draft()
+                prepare(service, plan_id)
+                with self.assertRaises(PlanError):
+                    service.execute(plan_id)
+                self.assertEqual((writer.calls, self.status(plan_id)), (0, expected))
+
+    def test_expired_at_execution_makes_no_write(self):
+        service, writer = self.service()
+        plan_id = self.draft()
+        service.approve(plan_id)
+        self.now = 1900
+        with self.assertRaisesRegex(PlanError, "过期"):
+            service.execute(plan_id)
+        self.assertEqual((writer.calls, self.status(plan_id)), (0, "expired"))
+
+    def test_site_changed_since_draft_is_rejected_without_write(self):
+        service, writer = self.service()
+        plan_id = self.draft()
+        service.approve(plan_id)
+        self.site.state = 2  # marked watched on the website after the draft was made
+        with self.assertRaisesRegex(PlanError, "已拒绝"):
+            service.execute(plan_id)
+        self.assertEqual((writer.calls, self.status(plan_id)), (0, "rejected"))
+
+    def test_repeated_execute_writes_at_most_once(self):
+        service, writer = self.service()
+        plan_id = self.draft()
+        service.approve(plan_id)
+        self.assertEqual(service.execute(plan_id)["status"], "verified")
+        with self.assertRaises(PlanError):
+            service.execute(plan_id)
+        self.assertEqual(writer.calls, 1)
+
+    def test_lock_lets_only_one_caller_move_to_executing(self):
+        plan_id = self.draft()
+        self.service()[0].approve(plan_id)
+        moves = [self.store.transition(plan_id, account_id=42, from_status="approved",
+                                       to_status="executing", now=1000) for _ in range(2)]
+        self.assertEqual(moves, [True, False])
+
+    def test_write_outcomes(self):
+        cases = {"rejected": ("failed", 0), "server_error": ("unknown", 0)}
+        for outcome, (expected, site_state) in cases.items():
+            with self.subTest(outcome):
+                self.site.state = 0
+                service, writer = self.service(outcome)
+                plan_id = self.draft()
+                service.approve(plan_id)
+                self.assertEqual(service.execute(plan_id)["status"], expected)
+                self.assertEqual((writer.calls, self.site.state), (1, site_state))
+
+    def test_unknown_check_is_read_only_and_settles_failed_when_not_applied(self):
+        service, writer = self.service("server_error")
+        plan_id = self.draft()
+        service.approve(plan_id)
+        service.execute(plan_id)
+        self.assertEqual(service.check(plan_id)["status"], "failed")
+        self.assertEqual(writer.calls, 1)
+
+    def test_success_with_failed_read_back_stays_unknown(self):
+        service, _ = self.service()
+        plan_id = self.draft()
+        service.approve(plan_id)
+        original = self.site.apply_write
+
+        def write_then_lose_reads(episode_id):
+            original(episode_id)
+            self.site.fail_reads = True
+        service.writer = SimulatedWriter(on_write=write_then_lose_reads)
+        self.assertEqual(service.execute(plan_id)["status"], "unknown")
+
+    def test_restart_while_executing_is_checked_not_resent(self):
+        service, writer = self.service()
+        plan_id = self.draft()
+        service.approve(plan_id)
+        # Simulate a crash right after the write reached the site but before status was saved.
+        self.store.transition(plan_id, account_id=42, from_status="approved", to_status="executing", now=1000)
+        self.site.state = 2
+        restarted, _ = self.service()
+        self.assertEqual(restarted.check(plan_id)["status"], "verified")
+        self.assertEqual(writer.calls, 0)
+
+    def test_mcp_has_no_approval_or_execution_tool(self):
+        async def names():
+            async with Client(mcp) as client:
+                return {tool.name for tool in (await client.list_tools()).tools}
+        tools = asyncio.run(names())
+        self.assertFalse({name for name in tools if "approve" in name or "execute" in name})
+
+
+if __name__ == "__main__":
+    unittest.main()
