@@ -2,8 +2,8 @@
 
 > **⚠️ 项目状态：开发中的学习项目，尚不能投入正式使用。**
 >
-> - 已完成：作品搜索/详情/章节的匿名查询、本人身份与收藏的只读查询、单集“标为看过”的本地预览草稿、3 个 MCP 工具、Android 兼容性实验 APK。
-> - 进行中：S3-03 批准、执行与未知结果处理。目前**没有任何修改 Bangumi 网站数据的功能**。
+> - 已完成：作品搜索/详情/章节的匿名查询、本人身份与收藏的只读查询、单集“标为看过”的预览→人工批准→执行→读回（仅命令行，已做过一次真实修改）、3 个只读/预览 MCP 工具、Android 兼容性实验 APK。
+> - 进行中：扩充只读工具集（S3-05）、在 Agent 对话中弹窗批准（S3-06）。**唯一能修改网站数据的是单集进度，且必须由你在命令行对具体预览批准**；MCP 工具不能批准或执行。
 > - 尚未开始：独立 Agent、可安装的正式 APK、日志与小组等网站业务。
 > - 当前进度以 [PROJECT_STATUS.json](PROJECT_STATUS.json) 为准，完整路线见 [docs/PLAN.md](docs/PLAN.md)。
 
@@ -71,7 +71,7 @@ python scripts/account_readonly.py
 
 先显示当前 Token 对应的账号，确认是本人后再读动画在看列表，可以逐页读取，也可以输入条目 ID 查看章节状态。`--me-only` 只查身份。
 
-## 进度预览（不执行）
+## 单集进度：预览、批准、执行
 
 为某一集创建“标为看过”的本地草稿，例如《中国奇谭 第二季》第 4 集：
 
@@ -88,7 +88,14 @@ python scripts/progress_preview.py show PLAN_ID
 python -m sqlite3 state/progress.sqlite3 "SELECT plan_id, subject_id, episode_id, before_type, after_type FROM plan_items;"
 ```
 
-批准和执行在 S3-03 实现，目前没有任何修改网站的入口。
+确认预览无误后，由你自己在命令行批准并执行：
+
+```powershell
+python scripts/progress_preview.py approve PLAN_ID
+python scripts/progress_preview.py execute PLAN_ID
+```
+
+`execute` 只执行已批准、未过期的计划，执行前会重新读取网站状态，状态变了就拒绝；写入后读回核对。网络中断导致结果不明时，用 `check PLAN_ID` 只读核对，不会自动重试。另有 `status`（查看状态）和 `cancel`（取消）。
 
 ## 许可证
 
