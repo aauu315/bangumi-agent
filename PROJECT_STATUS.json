@@ -11,20 +11,21 @@
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S3",
-  "current_task": "S3-05",
-  "next_task": "S3-05",
-  "next_action": "开始 S3-05（产出卡）：先读 PLAN 卡片，与用户确认要扩充的只读工具清单后再动手。",
+  "current_task": "S3-06",
+  "next_task": "S3-06",
+  "next_action": "开始 S3-06（学习卡）：先讲 MCP elicitation 的流程和批准通道的信任边界，再由用户写“模型自报批准无效”和“拒绝/取消/不支持时零写入”两条测试；执行工具和弹窗表单由助手写。用户选择先做 S3-06，S3-05 之后再做。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→命令行人工批准→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），已做过一次真实写入；3 个只读/预览 MCP 工具（MCP 不能批准或执行）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。50 项离线测试通过，pyright（basic）0 报错。未实现：对话内弹窗批准（S3-06）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-03 S3-04 完成：1 次经批准的真实写入读回一致；Codex 桌面版与 Claude Code 两端预览后让模型批准/执行均被拒，计划仍为 draft。下一步 S3-05。",
+  "last_update_summary": "2026-11-03 新增 S3-06（对话内弹窗批准）和 S4-06（可选信任模式）；用户选择先做 S3-06，S3-05 随后。",
   "next_session": {
-    "goal": "S3-05 扩充只读工具集（产出卡）",
-    "timebox": "见 PLAN S3-05 卡",
+    "goal": "S3-06 在 Agent 对话中弹窗批准（学习卡）",
+    "timebox": "学习 1h，开发 2–3h",
     "steps": [
-      "读卡片并与用户确认工具清单",
-      "助手实现工具与离线测试",
-      "至少一端客户端真实调用"
+      "讲解 elicitation：服务端请求、客户端弹窗、确认结果直接回传服务端；与工具权限提示（始终允许）的区别",
+      "用户写两条测试：模型自报批准无效；拒绝/取消/不支持时计划不变、零写入",
+      "助手实现执行工具（只接收 plan_id，复用 S3-03 状态机）和弹窗表单",
+      "Codex 桌面版和 Claude Code 逐端实测是否支持弹窗；至少一端经用户确认完成一次真实写入并读回"
     ],
-    "stop_when": "按 PLAN S3-05 通过标准。"
+    "stop_when": "离线测试五种情况通过，两端支持情况如实记录。真实写入需要用户对具体预览确认。"
   },
   "known_blockers": [],
   "future_requirements": [
