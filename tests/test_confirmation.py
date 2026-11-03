@@ -1,15 +1,23 @@
-"""Offline S3-03 state machine: fake site, simulated writer, temporary SQLite only."""
+"""Offline S3-03/S3-04: fake site, simulated or mocked writer, temporary SQLite only."""
 import asyncio
+import io
+import json
+import traceback
 import sqlite3
 import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
+from urllib.error import HTTPError, URLError
+from email.message import Message
 
 from mcp import Client
 from bangumi_agent.account_client import AccountReadError
-from bangumi_agent.confirmation import ExecutionService, SimulatedWriter
+from bangumi_agent.confirmation import ExecutionService, SimulatedWriter, WriteRejected, WriteUncertain
+from bangumi_agent.episode_writer import BangumiEpisodeWriter
+from bangumi_agent.settings import Settings
 from bangumi_agent.mcp_server import mcp
 from bangumi_agent.storage import PlanError, PlanStore, SCHEMA_VERSION
 
@@ -192,6 +200,41 @@ class ConfirmationTest(unittest.TestCase):
                 return {tool.name for tool in (await client.list_tools()).tools}
         tools = asyncio.run(names())
         self.assertFalse({name for name in tools if "approve" in name or "execute" in name})
+
+
+TOKEN = "offline-writer-fixture"
+
+
+class NoContent(io.BytesIO):
+    status = 204
+
+
+class EpisodeWriterTest(unittest.TestCase):
+    def writer(self) -> BangumiEpisodeWriter:
+        return BangumiEpisodeWriter(Settings(access_token=TOKEN))
+
+    def test_sends_one_put_marking_the_episode_watched(self):
+        with patch("bangumi_agent.episode_writer.build_opener") as opener:
+            opener.return_value.open.return_value = NoContent()
+            self.writer().mark_episode_watched(100, 9001)
+            request = opener.return_value.open.call_args.args[0]
+        self.assertEqual(opener.return_value.open.call_count, 1)
+        self.assertEqual(request.get_method(), "PUT")
+        self.assertEqual(request.full_url, "https://api.bgm.tv/v0/users/-/collections/-/episodes/9001")
+        self.assertEqual(json.loads(request.data), {"type": 2})
+        self.assertEqual(request.get_header("Authorization"), "Bearer " + TOKEN)
+
+    def test_errors_map_to_rejected_or_uncertain_without_leaking_token(self):
+        cases = {400: WriteRejected, 401: WriteRejected, 404: WriteRejected,
+                 500: WriteUncertain, 503: WriteUncertain, "network": WriteUncertain}
+        for case, expected in cases.items():
+            error = (URLError(TOKEN) if case == "network" else
+                     HTTPError("https://api.bgm.tv", case, TOKEN, Message(), io.BytesIO(TOKEN.encode())))
+            with self.subTest(case=case), patch("bangumi_agent.episode_writer.build_opener") as opener:
+                opener.return_value.open.side_effect = error
+                with self.assertRaises(expected) as caught:
+                    self.writer().mark_episode_watched(100, 9001)
+                self.assertNotIn(TOKEN, "".join(traceback.format_exception(caught.exception)))
 
 
 if __name__ == "__main__":
