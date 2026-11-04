@@ -254,6 +254,24 @@ class McpApprovalTest(unittest.TestCase):
             self.assertIn(text, self.popups[0])
 
     # S3-06 practice: the user's tests for model self-report and decline/cancel/no popup go here.
+    def test_model_confirmed(self):
+        self.call({"plan_id": self.plan_id,"confirmed": True}, self.answering("decline"))
+        self.assertEqual(self.status(), "draft")
+        self.assertEqual(self.writer.calls, 0)
+
+    def test_unwritten_when_decline_cancel_and_nopop(self):
+        for name, answer in (("cancel", self.answering("cancel")),
+                     ("decline", self.answering("decline")),
+                     ("no popup", None)):
+            with self.subTest(name):
+                self.setUp()
+                result = self.call({"plan_id": self.plan_id}, answer)
+                self.assertEqual(self.status(), "draft")
+                self.assertEqual(self.writer.calls, 0)
+                if answer is None:
+                    self.assertTrue(result.is_error)
+                else:
+                    self.assertFalse(result.is_error)
 
 
 TOKEN = "offline-writer-fixture"

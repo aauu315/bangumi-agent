@@ -791,9 +791,27 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 - 助手编写：`mcp_server.py` 新增 `execute_episode_plan(plan_id)`，解析器 `_ask_user` 在工具体之前读 SQLite 生成弹窗内容，用户答复由框架注入 `answer` 参数，不在工具 schema 中；拒绝、取消、未勾选确认返回 write_attempted=false，不支持弹窗报错并提示命令行。`confirmation.py` 新增 `approval_message`、`plan_for_approval`、`approve_and_execute`，复用 S3-03 状态机。
 - 测试：确认路径（新旧协议各一）、弹窗含具体内容、无批准工具且 schema 只有 plan_id；52 项通过，pyright 0 报错；把弹窗内容改含糊后测试失败，恢复后通过。助手用临时探针看过拒绝/取消/不支持/自报路径均为 draft、0 次写，正式测试留给用户。
-- 未做：用户的两条测试；Codex 桌面版与 Claude Code 是否真实弹窗、真实写入。
+- 当时未做：用户的两条测试；Codex 桌面版与 Claude Code 是否真实弹窗、真实写入。
+
+### 2026-11-04 · 用户的两条测试（核心学习点 2）
+
+- 用户亲手写 `test_model_confirmed`（参数多传 confirmed=True、弹窗拒绝，仍 draft、0 次写）和 `test_unwritten_when_decline_cancel_and_nopop`（取消/拒绝/不支持弹窗）。
+
+| 疑问或错误 | 原因 | 怎样修正 | 证据 |
+|---|---|---|---|
+| 变异检查时三种情况都失败，用户初判“全部被当成已批准” | 三轮共用计划、写入器、假网站，第一轮写入污染后两轮；“不支持弹窗”其实被 `_ask_user` 拦下（单独运行为 draft、0 次写） | 每轮调用 `self.setUp()` 重新准备 | 改后变异检查：自报、cancel、decline 失败，no popup 通过 |
+| 新增 `draft()` 后 `status()` 仍查 `self.plan_id` | 新计划 ID 只传给 call，没有存下，断言查的是从未操作的旧计划，永远通过 | 同上，用户自己说明了原因 | 用户原话：新写的草稿方法“没有把它存在任何地方” |
+| 不懂 setUp 为何自动执行、call 内部怎么读 | 助手交代码时未讲框架约定（助手的疏漏） | 助手讲 setUp 由 unittest 在每条测试前运行，逐行讲 call，并给出读测试类的顺序 | 用户随后自己调用 setUp |
+| 不懂 subTest 标签为何显示地址 | `self.answering(...)` 返回函数本身，函数打印为地址 | 循环 (名字, 回调) 两元组，标签用名字 | `git diff tests/` |
+
+- 验证：用户报告变异结果符合预期，恢复后全部通过；助手复跑 54 项通过，pyright 0 报错。
+- 未做：Codex 桌面版与 Claude Code 真实弹窗及真实写入；“你要能做到”中确认结果的来源与“始终允许”的区别，已有问答，实测后再复核。
 
 ## 开发流水
+
+## 2026-11-04 · S3-06 用户测试
+
+- 用户写模型自报批准无效、拒绝/取消/不支持零写入两条测试，修正用例共享状态并做变异检查；54 项通过。详见 S3-06 节。
 
 ## 2026-11-04 · S3-06 工程部分
 
