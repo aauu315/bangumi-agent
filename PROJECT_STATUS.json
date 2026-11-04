@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-06",
   "next_task": "S3-06",
-  "next_action": "S3-06 剩两端实测：Codex 桌面版与 Claude Code 新对话各试一次 execute_episode_plan 是否弹窗，至少一端确认后真实写入并读回；不支持的一端如实记录。",
+  "next_action": "S3-06 重测：Codex 桌面版（非 Full access）看去掉根级 title 后是否弹窗；Claude Code 改用终端 CLI 看是否弹窗。至少一端确认后真实写入并读回；都不弹则如实记录，由用户决定后续。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→命令行人工批准→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），已做过一次真实写入；3 个只读/预览 MCP 工具（MCP 不能批准或执行）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。50 项离线测试通过，pyright（basic）0 报错。未实现：对话内弹窗批准（S3-06）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-04 S3-06：用户写完两条测试并做变异检查，54 项通过，pyright 0 报错；真实弹窗未测。",
+  "last_update_summary": "2026-11-04 S3-06 首轮实测：两端都没弹窗，客户端自动回 cancel/decline，零写入；已去掉 schema 根级 title，待重测。",
   "next_session": {
     "goal": "S3-06 在 Agent 对话中弹窗批准（学习卡）",
     "timebox": "学习 1h，开发 2–3h",
