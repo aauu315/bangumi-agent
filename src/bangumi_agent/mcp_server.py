@@ -6,7 +6,7 @@ from typing import Annotated
 from mcp.server import MCPServer
 from mcp.server.mcpserver import AcceptedElicitation, Context, Elicit, ElicitationResult, Resolve
 from mcp.server.mcpserver.exceptions import ToolError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from bangumi_agent import api_client
 
@@ -88,7 +88,15 @@ def preview_episode_watched(subject_id: int, episode_id: int) -> dict:
 NO_POPUP = "当前客户端无法弹窗确认，未修改Bangumi；可在本机用 progress_preview.py approve 和 execute 完成"
 
 
+def _omit_root_title(schema: dict) -> None:
+    schema.pop("title", None)
+
+
 class EpisodeApproval(BaseModel):
+    # Codex Desktop on Windows rejects a root "title" and answers cancel with no popup
+    # (openai/codex#46003), so send only the property-level labels.
+    model_config = ConfigDict(json_schema_extra=_omit_root_title)
+
     confirm: bool = Field(default=True, title="确认修改", description="确认执行上面这一次修改")
 
 
@@ -146,13 +154,14 @@ def execute_episode_plan(
 
     plan_id来自preview_episode_watched。本工具会让客户端直接向用户弹窗显示具体修改，
     只有用户本人点击确认才会写入Bangumi；不能代替用户确认，转述用户的同意也不算确认。
-    用户拒绝、取消或客户端不支持弹窗时不写入。写入后读回核对，返回status：
-    verified已核实；failed未生效；unknown结果未知，不要重试，请用户在本机运行check核对。
+    未确认或客户端不支持弹窗时不写入。popup_result为decline或cancel时，也可能是客户端
+    没有显示弹窗就自动回答，不要说成用户拒绝，请询问用户是否看到了弹窗。写入后读回核对，
+    返回status：verified已核实；failed未生效；unknown结果未知，不要重试，请用户在本机运行check核对。
     """
     if not (isinstance(answer, AcceptedElicitation) and answer.data.confirm):
-        return {"plan_id": plan_id, "user_decision": answer.action, "write_attempted": False}
+        return {"plan_id": plan_id, "popup_result": answer.action, "write_attempted": False}
     with _safe_tool_errors():
-        return {**_execution_service().approve_and_execute(plan_id), "user_decision": "accept",
+        return {**_execution_service().approve_and_execute(plan_id), "popup_result": "accept",
                 "write_attempted": True}
 
 

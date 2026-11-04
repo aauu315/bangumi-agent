@@ -805,9 +805,25 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 | 不懂 subTest 标签为何显示地址 | `self.answering(...)` 返回函数本身，函数打印为地址 | 循环 (名字, 回调) 两元组，标签用名字 | `git diff tests/` |
 
 - 验证：用户报告变异结果符合预期，恢复后全部通过；助手复跑 54 项通过，pyright 0 报错。
-- 未做：Codex 桌面版与 Claude Code 真实弹窗及真实写入；“你要能做到”中确认结果的来源与“始终允许”的区别，已有问答，实测后再复核。
+- 当时未做：Codex 桌面版与 Claude Code 真实弹窗及真实写入；“你要能做到”中确认结果的来源与“始终允许”的区别，已有问答，实测后再复核。
+
+### 2026-11-04 · 第一轮两端实测：都没有弹窗
+
+| 客户端 | 用户看到 | 工具返回 | 本地计划 |
+|---|---|---|---|
+| Codex 桌面版 | 没有弹窗 | cancel | 第4集 3ff927d5…，draft |
+| Claude Code（桌面版 Code 页） | 没有弹窗 | decline | 第5集 641dd837…，draft |
+
+- 两端均未写入（只读查询本地库确认 draft）。服务端判断 `client_capabilities.elicitation` 为有，客户端声明支持却未显示，并返回和用户操作一样的结果，服务端无法区分；模型把它转述成“用户拒绝/取消”。设计的安全方向成立：没拿到确认就不写。
+- 查到的公开报告（未对当前版本验证）：openai/codex#46003，Windows 桌面版解析弹窗表单时拒绝根级 title，直接回 cancel；我们发送的 schema 确有根级 `"title": "EpisodeApproval"`，症状相符。另外 Full access（approval_policy=never）也会压制表单。anthropics/claude-code#79174、#98978 报告 VS Code 扩展声明支持但未接弹窗处理，全部自动 decline，并称终端 CLI 能显示；未找到针对桌面版 Code 页的报告。
+- 助手修改：`EpisodeApproval` 去掉根级 title 并加测试；工具返回字段 `user_decision` 改名 `popup_result`，说明中要求模型不要把 decline/cancel 说成用户拒绝。
+- 待验：Codex 去掉 title 后是否弹窗；Claude Code 终端 CLI 是否弹窗。
 
 ## 开发流水
+
+## 2026-11-04 · S3-06 两端未弹窗
+
+- Codex 回 cancel、Claude Code 回 decline，均未显示弹窗、未写入。去掉 schema 根级 title（对应 codex#46003），返回字段改 popup_result；待重测。详见 S3-06 节。
 
 ## 2026-11-04 · S3-06 用户测试
 

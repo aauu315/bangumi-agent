@@ -14,12 +14,13 @@ from urllib.error import HTTPError, URLError
 from email.message import Message
 
 from mcp import Client
+from mcp.server.elicitation import render_elicitation_schema
 from mcp_types import ElicitResult
 from bangumi_agent.account_client import AccountReadError
 from bangumi_agent.confirmation import ExecutionService, SimulatedWriter, WriteRejected, WriteUncertain
 from bangumi_agent.episode_writer import BangumiEpisodeWriter
 from bangumi_agent.settings import Settings
-from bangumi_agent.mcp_server import execute_episode_plan, mcp
+from bangumi_agent.mcp_server import EpisodeApproval, execute_episode_plan, mcp
 from bangumi_agent.storage import PlanError, PlanStore, SCHEMA_VERSION
 
 # The S3-02 layout, before status could be anything but 'draft'.
@@ -252,6 +253,12 @@ class McpApprovalTest(unittest.TestCase):
         # The popup itself names the concrete change, not just an opaque plan ID.
         for text in ("测试作品", "9001", "小雪", "未收藏 → 看过"):
             self.assertIn(text, self.popups[0])
+
+    def test_popup_schema_has_no_root_title(self):
+        # Codex Desktop answers cancel without a popup when the schema root has a title.
+        schema = render_elicitation_schema(EpisodeApproval)
+        self.assertNotIn("title", schema)
+        self.assertEqual(set(schema["properties"]), {"confirm"})
 
     # S3-06 practice: the user's tests for model self-report and decline/cancel/no popup go here.
     def test_model_confirmed(self):
