@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-03",
+  "updated_at": "2026-11-04",
   "project_root": "E:\\myproject\\bangumi-agent",
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-06",
   "next_task": "S3-06",
-  "next_action": "开始 S3-06（学习卡）：先讲 MCP elicitation 的流程和批准通道的信任边界，再由用户写“模型自报批准无效”和“拒绝/取消/不支持时零写入”两条测试；执行工具和弹窗表单由助手写。用户选择先做 S3-06，S3-05 之后再做。",
+  "next_action": "S3-06 工程部分已完成。用户写两条测试（模型自报批准无效；拒绝/取消/不支持时零写入）并做变异检查，然后 Codex 桌面版与 Claude Code 实测弹窗，至少一端真实写入并读回。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→命令行人工批准→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），已做过一次真实写入；3 个只读/预览 MCP 工具（MCP 不能批准或执行）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。50 项离线测试通过，pyright（basic）0 报错。未实现：对话内弹窗批准（S3-06）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-04 新增 S3-07（看到第 N 集与其他进度操作），S3-05 增加写入类工具的接口设计；顺序为 S3-06 → S3-05 → S3-07。",
+  "last_update_summary": "2026-11-04 S3-06：新增 MCP 执行工具和弹窗确认，52 项测试通过；真实弹窗未测，用户测试待写。",
   "next_session": {
     "goal": "S3-06 在 Agent 对话中弹窗批准（学习卡）",
     "timebox": "学习 1h，开发 2–3h",
@@ -171,8 +171,10 @@
     },
     {
       "id": "S3-06",
-      "status": "ready",
-      "evidence": [],
+      "status": "active",
+      "evidence": [
+        "docs/LOG.md#s3-06"
+      ],
       "learning": "not_checked",
       "blocker": null
     },

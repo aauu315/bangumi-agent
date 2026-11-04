@@ -1,7 +1,12 @@
-"""Public queries and a local preview; no remote write tools."""
+"""Public queries, a local preview, and one write that only the user's popup answer can start."""
+
+from contextlib import contextmanager
+from typing import Annotated
 
 from mcp.server import MCPServer
+from mcp.server.mcpserver import AcceptedElicitation, Context, Elicit, ElicitationResult, Resolve
 from mcp.server.mcpserver.exceptions import ToolError
+from pydantic import BaseModel, Field
 
 from bangumi_agent import api_client
 
@@ -78,6 +83,77 @@ def preview_episode_watched(subject_id: int, episode_id: int) -> dict:
         raise ToolError("本地数据库无法读取或保存") from None
     except Exception:
         raise ToolError("预览失败；已隐藏原始异常，请运行离线测试检查") from None
+
+
+NO_POPUP = "当前客户端无法弹窗确认，未修改Bangumi；可在本机用 progress_preview.py approve 和 execute 完成"
+
+
+class EpisodeApproval(BaseModel):
+    confirm: bool = Field(default=True, title="确认修改", description="确认执行上面这一次修改")
+
+
+def _execution_service():
+    from pathlib import Path
+    from .account_client import AccountClient
+    from .confirmation import ExecutionService
+    from .episode_writer import BangumiEpisodeWriter
+    from .settings import Settings
+    from .storage import PlanStore
+
+    root = Path(__file__).resolve().parents[2]
+    settings = Settings.from_token_file(root / ".secrets/bangumi-token.txt")
+    return ExecutionService(AccountClient(settings), PlanStore(root / "state/progress.sqlite3"),
+                            BangumiEpisodeWriter(settings))
+
+
+@contextmanager
+def _safe_tool_errors():
+    """Turn failures into short tool errors; raw exceptions could carry the token."""
+    import sqlite3
+    from .account_client import AccountReadError
+
+    try:
+        yield
+    except ToolError:
+        raise
+    except (ValueError, AccountReadError) as exc:
+        raise ToolError(str(exc)) from None
+    except (sqlite3.Error, OSError):
+        raise ToolError("本地数据库无法读取或保存") from None
+    except Exception:
+        raise ToolError("执行失败；已隐藏原始异常，请在本机运行status查看计划状态") from None
+
+
+def _ask_user(plan_id: str, ctx: Context) -> Elicit[EpisodeApproval]:
+    """Runs before the tool body. The SDK sends the popup and fills in the user's answer."""
+    from .confirmation import approval_message
+
+    capabilities = ctx.client_capabilities
+    popup = capabilities.elicitation if capabilities else None
+    if popup is None or (popup.form is None and popup.url is not None):
+        raise ToolError(NO_POPUP)
+    with _safe_tool_errors():
+        plan = _execution_service().plan_for_approval(plan_id)
+    return Elicit(approval_message(plan), EpisodeApproval)
+
+
+@mcp.tool()
+def execute_episode_plan(
+    plan_id: str,
+    answer: Annotated[ElicitationResult[EpisodeApproval], Resolve(_ask_user)],
+) -> dict:
+    """请用户确认并执行一份已创建的预览计划，把该章节标记为看过。
+
+    plan_id来自preview_episode_watched。本工具会让客户端直接向用户弹窗显示具体修改，
+    只有用户本人点击确认才会写入Bangumi；不能代替用户确认，转述用户的同意也不算确认。
+    用户拒绝、取消或客户端不支持弹窗时不写入。写入后读回核对，返回status：
+    verified已核实；failed未生效；unknown结果未知，不要重试，请用户在本机运行check核对。
+    """
+    if not (isinstance(answer, AcceptedElicitation) and answer.data.confirm):
+        return {"plan_id": plan_id, "user_decision": answer.action, "write_attempted": False}
+    with _safe_tool_errors():
+        return {**_execution_service().approve_and_execute(plan_id), "user_decision": "accept",
+                "write_attempted": True}
 
 
 if __name__ == "__main__":

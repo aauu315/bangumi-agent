@@ -13,7 +13,7 @@ from bangumi_agent.account_client import AccountClient, AccountReadError
 from bangumi_agent.settings import Settings, MissingTokenError
 from bangumi_agent.storage import PlanStore, PlanError
 from bangumi_agent.progress import ProgressPreview
-from bangumi_agent.confirmation import ExecutionService
+from bangumi_agent.confirmation import EPISODE_STATES, ExecutionService
 from bangumi_agent.episode_writer import BangumiEpisodeWriter
 
 STATUS_TEXT = {
@@ -67,11 +67,10 @@ def main():
             "execute": lambda: confirm.execute(args.plan_id),
             "check": lambda: confirm.check(args.plan_id),
         }[args.command]()
-        labels = {0: "未收藏", 1: "想看", 2: "看过", 3: "抛弃"}
         print(f"计划ID：{plan['plan_id']}\n账号ID：{plan['account_id']}")
         print(f"条目：{plan['subject_name']}（{plan['subject_id']}）")
         print(f"章节：第{plan['episode_sort']}集 {plan['episode_name']}（{plan['episode_id']}）")
-        print(f"拟修改：{labels[plan['before_type']]} → {labels[plan['after_type']]}")
+        print(f"拟修改：{EPISODE_STATES[plan['before_type']]} → {EPISODE_STATES[plan['after_type']]}")
         print(f"状态：{plan['status']}（{STATUS_TEXT[plan['status']]}）；过期时间：{datetime.fromtimestamp(plan['expires_at']).astimezone().isoformat(timespec='seconds')}")
         print(f"本地数据库：{args.db.resolve()}")
         if plan.get("detail"):

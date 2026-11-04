@@ -14,11 +14,12 @@ from urllib.error import HTTPError, URLError
 from email.message import Message
 
 from mcp import Client
+from mcp_types import ElicitResult
 from bangumi_agent.account_client import AccountReadError
 from bangumi_agent.confirmation import ExecutionService, SimulatedWriter, WriteRejected, WriteUncertain
 from bangumi_agent.episode_writer import BangumiEpisodeWriter
 from bangumi_agent.settings import Settings
-from bangumi_agent.mcp_server import mcp
+from bangumi_agent.mcp_server import execute_episode_plan, mcp
 from bangumi_agent.storage import PlanError, PlanStore, SCHEMA_VERSION
 
 # The S3-02 layout, before status could be anything but 'draft'.
@@ -194,12 +195,65 @@ class ConfirmationTest(unittest.TestCase):
         self.assertEqual(restarted.check(plan_id)["status"], "verified")
         self.assertEqual(writer.calls, 0)
 
-    def test_mcp_has_no_approval_or_execution_tool(self):
-        async def names():
+    def test_mcp_has_no_approval_tool_and_execution_takes_only_plan_id(self):
+        async def tools():
             async with Client(mcp) as client:
-                return {tool.name for tool in (await client.list_tools()).tools}
-        tools = asyncio.run(names())
-        self.assertFalse({name for name in tools if "approve" in name or "execute" in name})
+                return {tool.name: tool for tool in (await client.list_tools()).tools}
+        found = asyncio.run(tools())
+        self.assertFalse({name for name in found if "approve" in name})
+        self.assertEqual(set(found[execute_episode_plan.__name__].input_schema["properties"]), {"plan_id"})
+
+
+class McpApprovalTest(unittest.TestCase):
+    """execute_episode_plan with a fake site; the callback plays the user answering the popup."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.store = PlanStore(Path(self.temp.name) / "progress.sqlite3")
+        self.site = FakeSite()
+        self.writer = SimulatedWriter(on_write=self.site.apply_write)
+        self.plan_id = self.store.create(account_id=42, subject_id=100, episode_id=9001, subject_name="测试作品",
+                                         episode_name="小雪", episode_sort=4, before_type=0,
+                                         created_at=1000, expires_at=1900)
+        self.popups = []
+
+    def status(self) -> str:
+        return self.store.get_plan(self.plan_id, account_id=42)["status"]
+
+    def answering(self, action, confirm=True):
+        """A popup callback: records what the user saw and answers accept/decline/cancel."""
+        async def callback(context, params):
+            self.popups.append(params.message)
+            return ElicitResult(action=action, content={"confirm": confirm} if action == "accept" else None)
+        return callback
+
+    def call(self, arguments, callback=None, mode="auto"):
+        """Call the tool. callback=None is a client that does not support popups."""
+        service = ExecutionService(self.site, self.store, self.writer, lambda: 1000)
+
+        async def run():
+            with patch("bangumi_agent.mcp_server._execution_service", return_value=service):
+                async with Client(mcp, mode=mode, elicitation_callback=callback) as client:
+                    return await client.call_tool(execute_episode_plan.__name__, arguments)
+        return asyncio.run(run())
+
+    def test_user_confirming_the_popup_writes_once_and_reads_back(self):
+        result = self.call({"plan_id": self.plan_id}, self.answering("accept"))
+        self.confirm_written(result)
+
+    def test_popup_also_works_on_the_older_protocol(self):
+        # Clients may negotiate the pre-2026-07-28 handshake, where the popup is a mid-call request.
+        self.confirm_written(self.call({"plan_id": self.plan_id}, self.answering("accept"), mode="legacy"))
+
+    def confirm_written(self, result):
+        self.assertFalse(result.is_error)
+        self.assertEqual((self.status(), self.writer.calls), ("verified", 1))
+        # The popup itself names the concrete change, not just an opaque plan ID.
+        for text in ("测试作品", "9001", "小雪", "未收藏 → 看过"):
+            self.assertIn(text, self.popups[0])
+
+    # S3-06 practice: the user's tests for model self-report and decline/cancel/no popup go here.
 
 
 TOKEN = "offline-writer-fixture"

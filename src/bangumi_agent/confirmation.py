@@ -1,14 +1,25 @@
 """Approve, cancel, execute and reconcile one saved plan.
 
-Approval is only ever recorded by a human-facing entry point (CLI or app button); there is
-deliberately no MCP tool for it, so a model cannot approve its own plan. Execution trusts
-only the status stored in SQLite, never a "confirmed" flag passed in by a caller.
+Approval only comes from the user: the CLI, or a client popup (MCP elicitation) whose answer
+reaches the server without passing through the model. Execution trusts only the status stored
+in SQLite, never a "confirmed" flag passed in by a caller.
 """
 import time
 from typing import Any, Protocol
 
 from .account_client import AccountReadError
 from .storage import PlanError, PlanStore
+
+
+EPISODE_STATES = {0: "未收藏", 1: "想看", 2: "看过", 3: "抛弃"}
+
+
+def approval_message(plan: dict[str, Any]) -> str:
+    """What the user is asked to confirm; built from SQLite, never from model text."""
+    return (f"确认修改 Bangumi 收藏？\n"
+            f"条目：{plan['subject_name']}（{plan['subject_id']}）\n"
+            f"章节：第{plan['episode_sort']}集 {plan['episode_name']}（{plan['episode_id']}）\n"
+            f"修改：{EPISODE_STATES[plan['before_type']]} → {EPISODE_STATES[plan['after_type']]}")
 
 
 class WriteRejected(Exception):
@@ -86,6 +97,20 @@ class ExecutionService:
         if not self._move(plan, account_id, "cancelled", now, "用户取消"):
             raise PlanError("计划状态已被其他操作改变，请重新查看")
         return self.store.get_plan(plan_id, account_id=account_id)
+
+    def plan_for_approval(self, plan_id) -> dict[str, Any]:
+        """The plan to show the user, only if it can still be approved and executed."""
+        account_id, plan, now = self._load(plan_id)
+        if plan["status"] not in ("draft", "approved"):
+            raise PlanError(f"该计划不能再执行，当前状态：{plan['status']}")
+        self._expire_if_due(plan, account_id, now)
+        return plan
+
+    def approve_and_execute(self, plan_id) -> dict[str, Any]:
+        """Call only after the user confirmed this plan through a channel the model cannot reach."""
+        if self.plan_for_approval(plan_id)["status"] == "draft":
+            self.approve(plan_id)
+        return self.execute(plan_id)
 
     def execute(self, plan_id) -> dict[str, Any]:
         account_id, plan, now = self._load(plan_id)
