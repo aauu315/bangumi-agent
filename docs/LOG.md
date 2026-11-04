@@ -817,9 +817,20 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - 两端均未写入（只读查询本地库确认 draft）。服务端判断 `client_capabilities.elicitation` 为有，客户端声明支持却未显示，并返回和用户操作一样的结果，服务端无法区分；模型把它转述成“用户拒绝/取消”。设计的安全方向成立：没拿到确认就不写。
 - 查到的公开报告（未对当前版本验证）：openai/codex#46003，Windows 桌面版解析弹窗表单时拒绝根级 title，直接回 cancel；我们发送的 schema 确有根级 `"title": "EpisodeApproval"`，症状相符。另外 Full access（approval_policy=never）也会压制表单。anthropics/claude-code#79174、#98978 报告 VS Code 扩展声明支持但未接弹窗处理，全部自动 decline，并称终端 CLI 能显示；未找到针对桌面版 Code 页的报告。
 - 助手修改：`EpisodeApproval` 去掉根级 title 并加测试；工具返回字段 `user_decision` 改名 `popup_result`，说明中要求模型不要把 decline/cancel 说成用户拒绝。
-- 待验：Codex 去掉 title 后是否弹窗；Claude Code 终端 CLI 是否弹窗。
+- 当时待验：Codex 去掉 title 后是否弹窗；Claude Code 终端 CLI 是否弹窗。
+
+### 2026-11-04 · 第二轮实测：Codex 真实弹窗并写入
+
+- 去掉根级 title 后，Codex 桌面版真实弹窗（用户截图）：显示《异国日记》第5集《选择》（1599440）、未收藏 → 看过、确认勾选框、拒绝/接受按钮。
+- 本地库：`441d74ca` 第4集（1599439）17:20、`aa654eff` 第5集（1599440）17:22，均 verified。助手原建议只写一集，看到两次写入后请用户核对，用户确认“都是我点的”。第5集在 Codex 有截图证据；第4集的客户端未记录，先拒绝再接受的路径用户未报告。
+- 助手按用户要求把终端版 Claude Code 由 2.1.225 更新到 2.1.318（npm 全局）。`claude doctor`（不带会话环境变量）显示 Auto-updates: enabled；配置文件、用户/系统环境变量、PowerShell 配置中未找到关闭项，未改设置。npm 提示安装脚本未获允许，程序可运行，对之后自动更新的影响未验证。
+- 待验：终端版 Claude Code 是否弹窗；用户说明确认结果的来源与“始终允许”的区别。
 
 ## 开发流水
+
+## 2026-11-04 · S3-06 Codex 弹窗写入
+
+- 去掉根级 title 后 Codex 真实弹窗，第4、5集经用户确认写入并读回 verified；终端版 Claude Code 更新到 2.1.318，待测。详见 S3-06 节。
 
 ## 2026-11-04 · S3-06 两端未弹窗
 
