@@ -78,16 +78,16 @@ class ProgressPreview:
     def create_change(self, subject_id, episode_ids, target_state, ttl_seconds=900):
         """Plan "change these episodes to target_state". The user writes this (S3-08)."""
         _positive(subject_id,"subject_id")
-        if type(target_state) is not int or target_state > 3 or target_state < 0:
+        if type(target_state) is not int or target_state not in (0, 1, 2, 3):
             raise ValueError("目标状态不合法")
         if not isinstance(episode_ids,list):
             raise ValueError("章节以列表的形式传输")
-        if len(episode_ids) > 50 or len(episode_ids) == 0:
-            raise ValueError("一次最多操作50个章节")
-        if len(set(episode_ids)) != len(episode_ids):
-            raise PlanError("episode_ids 有重复")
         for episode_id in episode_ids:
             _positive(episode_id,"episode_id")
+        if len(episode_ids) > 50 or len(episode_ids) == 0:
+            raise ValueError("操作章节数量必须是1~50")
+        if len(set(episode_ids)) != len(episode_ids):
+            raise PlanError("episode_ids 有重复")
         self._check_ttl(ttl_seconds)
         me = self.client.get_me()
         subject = self.client.get_my_collection(subject_id)
@@ -99,7 +99,7 @@ class ProgressPreview:
         for episode_id in episode_ids:
             target = next((row for row in pages["data"] if row["episode_id"] == episode_id), None)
             if target is None:
-                raise PlanError("所选章节不属于该条目，已拒绝创建计划")
+                raise PlanError(f"所选章节{episode_id}不属于该条目，已拒绝创建计划")
             name = target["name_cn"] or target["name"] or ""
             if target["type"] == target_state:
                 skipped.append({"episode_sort": _shown_number(target), "episode_name": name,

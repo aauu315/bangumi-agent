@@ -123,6 +123,7 @@ class CreateChangeTest(unittest.TestCase):
             "duplicate id": (SUBJECT, [9002, 9002], WATCHED),
             "bad episode id": (SUBJECT, [0], WATCHED),
             "bad subject id": (0, [9002], WATCHED),
+            "two level list":(SUBJECT, [[9001], [9002]], WATCHED)
         }
         for name, args in cases.items():
             with self.subTest(name), self.assertRaises(ValueError):
