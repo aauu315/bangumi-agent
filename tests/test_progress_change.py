@@ -48,7 +48,8 @@ class FakeSite:
         self.requests += 1
         rows = [{"episode_id": episode_id, "type": state, "sort": episode_id - 9000, "ep": episode_id - 9000,
                  "name": f"ep{episode_id - 9000}", "name_cn": None}
-                for episode_id, state in self.states.items()]
+                for episode_id, state in self.states.items()
+                if episode_type is None or episode_id != 9090]
         return {"data": rows, "total": len(rows), "complete": self.complete}
 
 
