@@ -11,7 +11,7 @@ class PlanError(ValueError):
     pass
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 STATUSES = ("draft", "approved", "cancelled", "expired", "rejected",
             "executing", "verified", "failed", "unknown", "partial")
 # The only allowed moves; see LOG.md#s3-03 and LOG.md#s3-07 for the state diagram.
@@ -44,9 +44,10 @@ CREATE TABLE plan_items_new (
     subject_name TEXT NOT NULL,
     episode_name TEXT NOT NULL,
     episode_sort TEXT NOT NULL,
-    before_type INTEGER NOT NULL CHECK(before_type IN (0, 1, 3)),
-    after_type INTEGER NOT NULL CHECK(after_type = 2),
+    before_type INTEGER NOT NULL CHECK(before_type IN (0, 1, 2, 3)),
+    after_type INTEGER NOT NULL CHECK(after_type IN (0, 1, 2, 3)),
     result TEXT CHECK(result IS NULL OR result IN ({", ".join(f"'{r}'" for r in ITEM_RESULTS)})),
+    CHECK(before_type <> after_type),
     PRIMARY KEY (plan_id, episode_id)
 );
 """
@@ -58,18 +59,18 @@ CREATE_CURRENT = (f"BEGIN;{PLANS_TABLE}{ITEMS_TABLE}{RENAME_NEW_TABLES}"
                   f"PRAGMA user_version = {SCHEMA_VERSION};COMMIT;")
 
 
-def _migration(updated_at: str, detail: str) -> str:
+def _migration(updated_at: str, detail: str, skipped: str, result: str) -> str:
     """SQLite cannot ALTER a CHECK or a primary key, so copy into new tables, keeping every plan."""
     return f"""
 BEGIN;
 {PLANS_TABLE}
-INSERT INTO operation_plans_new (plan_id, account_id, created_at, expires_at, status, updated_at, detail)
-    SELECT plan_id, account_id, created_at, expires_at, status, {updated_at}, {detail} FROM operation_plans;
+INSERT INTO operation_plans_new (plan_id, account_id, created_at, expires_at, status, updated_at, detail, skipped)
+    SELECT plan_id, account_id, created_at, expires_at, status, {updated_at}, {detail}, {skipped} FROM operation_plans;
 {ITEMS_TABLE}
 INSERT INTO plan_items_new (plan_id, subject_id, episode_id, subject_name, episode_name,
-                            episode_sort, before_type, after_type)
+                            episode_sort, before_type, after_type, result)
     SELECT plan_id, subject_id, episode_id, subject_name, episode_name,
-           episode_sort, before_type, after_type FROM plan_items;
+           episode_sort, before_type, after_type, {result} FROM plan_items;
 DROP TABLE plan_items;
 DROP TABLE operation_plans;
 {RENAME_NEW_TABLES}
@@ -80,7 +81,12 @@ COMMIT;
 
 # Version 0 is the S3-02 layout: status could only be 'draft', no updated_at or detail.
 # Version 1 is the S3-03 layout: one episode per plan, no 'partial' status.
-MIGRATIONS = {0: _migration("created_at", "''"), 1: _migration("updated_at", "detail")}
+# Version 2 is the S3-07 layout: several episodes, but the target could only be watched.
+MIGRATIONS = {
+    0: _migration("created_at", "''", "'[]'", "NULL"),
+    1: _migration("updated_at", "detail", "'[]'", "NULL"),
+    2: _migration("updated_at", "detail", "skipped", "result"),
+}
 
 
 class PlanStore:
@@ -128,7 +134,7 @@ class PlanStore:
         )
 
     def create_many(self, *, account_id, subject_id, subject_name, items, created_at, expires_at,
-                    skipped=()) -> str:
+                    skipped=(), after_type=2) -> str:
         """Atomically save a draft and every proposed change; skipped is only shown to the user."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         plan_id = uuid4().hex
@@ -143,9 +149,9 @@ class PlanStore:
                 connection.executemany(
                     "INSERT INTO plan_items (plan_id, subject_id, episode_id, subject_name, "
                     "episode_name, episode_sort, before_type, after_type) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, 2)",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     [(plan_id, subject_id, item["episode_id"], subject_name, item["episode_name"],
-                      str(item["episode_sort"]), item["before_type"]) for item in items],
+                      str(item["episode_sort"]), item["before_type"], after_type) for item in items],
                 )
         return plan_id
 

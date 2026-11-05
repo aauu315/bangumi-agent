@@ -101,16 +101,28 @@ def preview_watched_up_to(
     返回items（要改的集和修改前状态）、skipped（跳过的集）。默认使用本机Token。
     本工具不会批准或执行修改，只写本地SQLite；执行用execute_episode_plan。
     """
-    from pathlib import Path
-    from .account_client import AccountClient
-    from .progress import ProgressPreview
-    from .settings import Settings
-    from .storage import PlanStore
-
-    root = Path(__file__).resolve().parents[2]
     with _safe_tool_errors():
-        client = AccountClient(Settings.from_token_file(root / ".secrets/bangumi-token.txt"))
-        plan = ProgressPreview(client, PlanStore(root / "state/progress.sqlite3")).create_up_to(subject_id, episode_id)
+        plan = _progress_preview().create_up_to(subject_id, episode_id)
+        return {**plan, "remote_write_performed": False, "snapshot_only": True}
+
+
+@mcp.tool()
+def preview_episode_change(
+    subject_id: SubjectId,
+    episode_ids: Annotated[list[int], Field(
+        description="要改的章节ID列表，来自get_episodes；一个ID就是改一集，最多50个，都要属于这部作品；不是第几集",
+        min_length=1, max_length=50)],
+    target_state: Annotated[int, Field(description="目标状态：0未收藏、1想看、2看过、3抛弃", ge=0, le=3)],
+) -> dict:
+    """创建把指定几集改成某个状态的本地草稿，用于“把第3集标成抛弃”“撤销第5集的看过”“这几集改回想看”。
+
+    撤销就是把状态改回去，用本工具。用户说“看到第N集”时用preview_watched_up_to，它会按规则选集。
+    OP、ED、SP也可以改。有ID不属于这部作品时整份计划被拒绝；已是目标状态的集会跳过并列出；已抛弃的作品被拒绝。
+    返回items（要改的集和修改前状态）、skipped（跳过的集）。默认使用本机Token。
+    本工具不会批准或执行修改，只写本地SQLite；执行用execute_episode_plan。
+    """
+    with _safe_tool_errors():
+        plan = _progress_preview().create_change(subject_id, episode_ids, target_state)
         return {**plan, "remote_write_performed": False, "snapshot_only": True}
 
 
@@ -179,7 +191,7 @@ def execute_episode_plan(
     plan_id: Annotated[str, Field(description="计划ID，来自preview_episode_watched")],
     answer: Annotated[ElicitationResult[EpisodeApproval], Resolve(_ask_user)],
 ) -> dict:
-    """请用户确认并执行一份已创建的预览计划，把其中的章节标记为看过。
+    """请用户确认并执行一份已创建的预览计划，把其中的章节改成计划里的目标状态。
 
     本工具会让客户端直接向用户弹窗显示具体修改，
     只有用户本人点击确认才会写入Bangumi；不能代替用户确认，转述用户的同意也不算确认。
@@ -202,6 +214,15 @@ def _public_read(read, *args) -> dict:
             return read(*args)
         except api_client.BangumiApiError as exc:
             raise ToolError(str(exc)) from None
+
+
+def _progress_preview():
+    from pathlib import Path
+    from .progress import ProgressPreview
+    from .storage import PlanStore
+
+    root = Path(__file__).resolve().parents[2]
+    return ProgressPreview(_account_client(), PlanStore(root / "state/progress.sqlite3"))
 
 
 def _account_client():

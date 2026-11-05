@@ -24,7 +24,7 @@ def approval_message(plan: dict[str, Any]) -> str:
     if len(plan["items"]) == 1:
         return (head + f"章节：第{plan['episode_sort']}集 {plan['episode_name']}（{plan['episode_id']}）\n"
                 f"修改：{EPISODE_STATES[plan['before_type']]} → {EPISODE_STATES[plan['after_type']]}")
-    lines = [head + f"修改：{len(plan['items'])}集标为看过"]
+    lines = [head + f"修改：{len(plan['items'])}集标为{EPISODE_STATES[plan['after_type']]}"]
     for state, label in EPISODE_STATES.items():
         sorts = [item["episode_sort"] for item in plan["items"] if item["before_type"] == state]
         if sorts:
@@ -44,8 +44,8 @@ class WriteUncertain(Exception):
 
 
 class EpisodeWriter(Protocol):
-    def mark_episode_watched(self, subject_id: int, episode_id: int) -> None: ...
-    def mark_episodes_watched(self, subject_id: int, episode_ids: list[int]) -> None: ...
+    def set_episode_state(self, subject_id: int, episode_id: int, state: int) -> None: ...
+    def set_episodes_state(self, subject_id: int, episode_ids: list[int], state: int) -> None: ...
 
 
 class AccountReader(Protocol):
@@ -62,20 +62,22 @@ class SimulatedWriter:
     on_write is called when the simulated site applies the change, so a fake reader
     can show the new state on read-back. never_applies keeps those episode IDs unchanged
     though the server answers OK; first_try_misses does the same on the first request only.
-    batches records the IDs of each batch request.
+    batches records the IDs of each request and states the state it asked for.
     """
 
     def __init__(self, outcome="success", on_write=None, never_applies=(), first_try_misses=()):
         self.outcome, self.on_write, self.calls = outcome, on_write, 0
         self.never_applies, self.first_try_misses = set(never_applies), set(first_try_misses)
         self.batches: list[list[int]] = []
+        self.states: list[int] = []
 
-    def mark_episode_watched(self, subject_id: int, episode_id: int) -> None:
-        self.mark_episodes_watched(subject_id, [episode_id])
+    def set_episode_state(self, subject_id: int, episode_id: int, state: int) -> None:
+        self.set_episodes_state(subject_id, [episode_id], state)
 
-    def mark_episodes_watched(self, subject_id: int, episode_ids: list[int]) -> None:
+    def set_episodes_state(self, subject_id: int, episode_ids: list[int], state: int) -> None:
         self.calls += 1
         self.batches.append(list(episode_ids))
+        self.states.append(state)
         if self.outcome == "rejected":
             raise WriteRejected("模拟：服务器拒绝（4xx）")
         if self.outcome == "server_error":
@@ -166,16 +168,16 @@ class ExecutionService:
 
     def _write(self, plan, episode_ids) -> None:
         if len(plan["items"]) == 1:
-            self.writer.mark_episode_watched(plan["subject_id"], episode_ids[0])
+            self.writer.set_episode_state(plan["subject_id"], episode_ids[0], plan["after_type"])
         else:
-            self.writer.mark_episodes_watched(plan["subject_id"], episode_ids)
+            self.writer.set_episodes_state(plan["subject_id"], episode_ids, plan["after_type"])
 
     def _read_states(self, plan) -> dict[int, int]:
         """Current site state of every episode in the plan, or AccountReadError."""
         if len(plan["items"]) == 1:
             episode_id = plan["episode_id"]
             return {episode_id: self.reader.get_my_episode_state(episode_id)["type"]}
-        pages = self.reader.get_all_my_episode_states(plan["subject_id"], limit=50, max_pages=20, episode_type=0)
+        pages = self.reader.get_all_my_episode_states(plan["subject_id"], limit=50, max_pages=20, episode_type=None)
         states = {row["episode_id"]: row["type"] for row in pages["data"]}
         if not pages["complete"] or any(item["episode_id"] not in states for item in plan["items"]):
             raise AccountReadError("章节状态没有读全，无法核对")
@@ -248,7 +250,7 @@ class ExecutionService:
 
     @staticmethod
     def _describe(plan, results: dict[int, str]) -> str:
-        labels = {"applied": "读回为看过", "not_applied": "读回仍为修改前状态",
+        labels = {"applied": f"读回为{EPISODE_STATES[plan['after_type']]}", "not_applied": "读回仍为修改前状态",
                   "changed_elsewhere": "被其他操作改成了别的状态"}
         parts = []
         for result, label in labels.items():

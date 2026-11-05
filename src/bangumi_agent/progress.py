@@ -1,4 +1,4 @@
-"""Prepare episode -> watched plans. This module cannot execute them."""
+"""Prepare episode change plans. This module cannot execute them."""
 import time
 
 from .account_client import AccountReadError, _positive
@@ -76,7 +76,7 @@ class ProgressPreview:
         return self.store.get_preview(plan_id, account_id=me["id"], now=now)
 
     def create_change(self, subject_id, episode_ids, target_state, ttl_seconds=900):
-        """Plan "change these episodes to target_state". The user writes this (S3-08)."""
+        """Plan "change exactly these episodes to target_state"; any kind of episode, 1 to 50 at a time."""
         _positive(subject_id,"subject_id")
         if type(target_state) is not int or target_state not in (0, 1, 2, 3):
             raise ValueError("目标状态不合法")
@@ -95,11 +95,12 @@ class ProgressPreview:
         pages = self.client.get_all_my_episode_states(subject_id, limit=50, max_pages=20, episode_type=None)
         if not pages["complete"]:
             raise PlanError("章节列表没有读完，已拒绝创建计划，避免漏掉或选错章节")
+        rows = {row["episode_id"]: row for row in pages["data"]}
         items, skipped = [], []
         for episode_id in episode_ids:
-            target = next((row for row in pages["data"] if row["episode_id"] == episode_id), None)
-            if target is None:
+            if episode_id not in rows:
                 raise PlanError(f"所选章节{episode_id}不属于该条目，已拒绝创建计划")
+            target = rows[episode_id]
             name = target["name_cn"] or target["name"] or ""
             if target["type"] == target_state:
                 skipped.append({"episode_sort": _shown_number(target), "episode_name": name,

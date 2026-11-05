@@ -272,7 +272,7 @@ class BatchWriterTest(unittest.TestCase):
     def test_sends_one_patch_with_all_episode_ids(self):
         with patch("bangumi_agent.episode_writer.build_opener") as opener:
             opener.return_value.open.return_value = NoContent()
-            BangumiEpisodeWriter(Settings(access_token="offline-fixture")).mark_episodes_watched(100, [9002, 9003])
+            BangumiEpisodeWriter(Settings(access_token="offline-fixture")).set_episodes_state(100, [9002, 9003], 2)
             request = opener.return_value.open.call_args.args[0]
         self.assertEqual(request.get_method(), "PATCH")
         self.assertEqual(request.full_url, "https://api.bgm.tv/v0/users/-/collections/100/episodes")

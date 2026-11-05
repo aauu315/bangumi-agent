@@ -2,12 +2,21 @@
 
 运行：.venv\\Scripts\\python.exe tests\\test_progress_change.py
 """
+import io
+import json
+import sqlite3
+import tempfile
 import unittest
+from contextlib import closing
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from bangumi_agent.confirmation import ExecutionService, SimulatedWriter, approval_message
+from bangumi_agent.episode_writer import BangumiEpisodeWriter
 from bangumi_agent.progress import ProgressPreview
-from bangumi_agent.storage import PlanError
+from bangumi_agent.settings import Settings
+from bangumi_agent.storage import MIGRATIONS, PlanError, PlanStore, SCHEMA_VERSION
 
 UNSEEN, WISH, WATCHED, DROPPED = 0, 1, 2, 3
 SUBJECT = 100
@@ -29,6 +38,10 @@ class FakeSite:
     def get_my_collection(self, subject_id: int) -> dict[str, Any]:
         self.requests += 1
         return {"subject_id": subject_id, "type": self.collection_type, "name": "测试作品"}
+
+    def get_my_episode_state(self, episode_id: int) -> dict[str, Any]:
+        return {"episode_id": episode_id, "subject_id": SUBJECT, "type": self.states[episode_id],
+                "sort": episode_id - 9000, "ep": episode_id - 9000, "name": "集"}
 
     def get_all_my_episode_states(self, subject_id: int, limit: int = 40, max_pages: int = 5,
                                   episode_type: int | None = None) -> dict[str, Any]:
@@ -140,6 +153,99 @@ class CreateChangeTest(unittest.TestCase):
         plan = self.preview.create_change(SUBJECT, [9002], WATCHED, ttl_seconds=60)
         self.assertEqual((plan["account_id"], plan["subject_id"], plan["subject_name"]), (42, SUBJECT, "测试作品"))
         self.assertEqual((plan["created_at"], plan["expires_at"]), (1000, 1060))
+
+
+SCHEMA_V2 = """
+CREATE TABLE operation_plans (
+    plan_id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL, status TEXT NOT NULL, updated_at INTEGER NOT NULL,
+    detail TEXT NOT NULL DEFAULT '', skipped TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE plan_items (
+    plan_id TEXT NOT NULL REFERENCES operation_plans(plan_id), subject_id INTEGER NOT NULL,
+    episode_id INTEGER NOT NULL, subject_name TEXT NOT NULL, episode_name TEXT NOT NULL,
+    episode_sort TEXT NOT NULL, before_type INTEGER NOT NULL, after_type INTEGER NOT NULL CHECK(after_type = 2),
+    result TEXT, PRIMARY KEY (plan_id, episode_id));
+INSERT INTO operation_plans VALUES ('old', 42, 100, 5000, 'partial', 200, '部分完成', '[{"episode_sort": 1}]');
+INSERT INTO plan_items VALUES ('old', 100, 9002, '测试作品', '集', '2', 0, 2, 'not_applied');
+PRAGMA user_version = 2;
+"""
+
+
+class ChangeWithRealStoreTest(unittest.TestCase):
+    """The whole path on a real temporary database; only the site and the write are simulated."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.path = Path(self.temp.name) / "progress.sqlite3"
+        self.store = PlanStore(self.path)
+        self.site = FakeSite()
+
+    def run_change(self, episode_ids, target) -> tuple[dict[str, Any], SimulatedWriter]:
+        def apply(episode_id):
+            self.site.states[episode_id] = target
+        writer = SimulatedWriter(on_write=apply)
+        service = ExecutionService(self.site, self.store, writer, lambda: 1000)
+        plan_id = ProgressPreview(self.site, self.store, lambda: 1000).create_change(SUBJECT, episode_ids, target)["plan_id"]
+        service.approve(plan_id)
+        return service.execute(plan_id), writer
+
+    def test_undo_watched_on_one_episode_writes_unseen(self):
+        plan, writer = self.run_change([9001], UNSEEN)
+        self.assertEqual(plan["status"], "verified")
+        self.assertEqual((writer.batches, writer.states, self.site.states[9001]), ([[9001]], [UNSEEN], UNSEEN))
+        self.assertIn("读回为未收藏", plan["detail"])
+
+    def test_batch_writes_the_target_state_and_an_op_counts(self):
+        plan, writer = self.run_change([9002, 9003, 9090], DROPPED)
+        self.assertEqual(plan["status"], "verified")
+        self.assertEqual(writer.states, [DROPPED])
+        self.assertEqual(self.site.states[9090], DROPPED)
+
+    def test_popup_names_the_target_state(self):
+        preview = ProgressPreview(self.site, self.store, lambda: 1000)
+        single = preview.create_change(SUBJECT, [9001], UNSEEN)
+        self.assertIn("修改：看过 → 未收藏", approval_message(single))
+        batch = preview.create_change(SUBJECT, [9001, 9002, 9004], WISH)
+        for text in ("3集标为想看", "原为看过：第1集", "原为未收藏：第2集", "原为抛弃：第4集"):
+            self.assertIn(text, approval_message(batch))
+
+    def test_version_2_database_keeps_its_plans_and_accepts_any_target(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.executescript(SCHEMA_V2)
+        old = self.store.get_plan("old", account_id=42)
+        self.assertEqual((old["status"], old["detail"], old["skipped"]), ("partial", "部分完成", [{"episode_sort": 1}]))
+        self.assertEqual(old["items"][0]["result"], "not_applied")
+        plan, _ = self.run_change([9001], UNSEEN)
+        self.assertEqual(plan["after_type"], UNSEEN)
+        with closing(sqlite3.connect(self.path)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
+        self.assertEqual(set(MIGRATIONS), set(range(SCHEMA_VERSION)))
+
+
+class NoContent(io.BytesIO):
+    status = 204
+
+
+class WriterStateTest(unittest.TestCase):
+    def writer(self) -> BangumiEpisodeWriter:
+        return BangumiEpisodeWriter(Settings(access_token="offline-fixture"))
+
+    def test_requests_carry_the_target_state(self):
+        calls = [(lambda w: w.set_episode_state(SUBJECT, 9001, UNSEEN), "PUT", {"type": 0}),
+                 (lambda w: w.set_episodes_state(SUBJECT, [9001, 9002], DROPPED), "PATCH",
+                  {"episode_id": [9001, 9002], "type": 3})]
+        for write, method, body in calls:
+            with self.subTest(method), patch("bangumi_agent.episode_writer.build_opener") as opener:
+                opener.return_value.open.return_value = NoContent()
+                write(self.writer())
+                request = opener.return_value.open.call_args.args[0]
+                self.assertEqual((request.get_method(), json.loads(request.data)), (method, body))
+
+    def test_invalid_state_is_refused_before_any_request(self):
+        with patch("bangumi_agent.episode_writer.build_opener") as opener, self.assertRaises(ValueError):
+            self.writer().set_episode_state(SUBJECT, 9001, 4)
+        opener.assert_not_called()
 
 
 if __name__ == "__main__":

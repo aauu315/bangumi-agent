@@ -299,7 +299,7 @@ class EpisodeWriterTest(unittest.TestCase):
     def test_sends_one_put_marking_the_episode_watched(self):
         with patch("bangumi_agent.episode_writer.build_opener") as opener:
             opener.return_value.open.return_value = NoContent()
-            self.writer().mark_episode_watched(100, 9001)
+            self.writer().set_episode_state(100, 9001, 2)
             request = opener.return_value.open.call_args.args[0]
         self.assertEqual(opener.return_value.open.call_count, 1)
         self.assertEqual(request.get_method(), "PUT")
@@ -316,7 +316,7 @@ class EpisodeWriterTest(unittest.TestCase):
             with self.subTest(case=case), patch("bangumi_agent.episode_writer.build_opener") as opener:
                 opener.return_value.open.side_effect = error
                 with self.assertRaises(expected) as caught:
-                    self.writer().mark_episode_watched(100, 9001)
+                    self.writer().set_episode_state(100, 9001, 2)
                 self.assertNotIn(TOKEN, "".join(traceback.format_exception(caught.exception)))
 
 

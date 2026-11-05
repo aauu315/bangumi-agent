@@ -40,6 +40,11 @@ def main():
     up_to.add_argument("--subject-id", type=int, required=True)
     up_to.add_argument("--episode-id", type=int, required=True)
     up_to.add_argument("--ttl-seconds", type=int, default=900)
+    change = commands.add_parser("create-change", help="创建把指定章节改成某状态的草稿；撤销也用它")
+    change.add_argument("--subject-id", type=int, required=True)
+    change.add_argument("--episode-ids", type=int, nargs="+", required=True)
+    change.add_argument("--state", type=int, required=True, help="0未收藏 1想看 2看过 3抛弃")
+    change.add_argument("--ttl-seconds", type=int, default=900)
     show = commands.add_parser("show", help="验证当前账号并查看未过期草稿快照")
     show.add_argument("plan_id")
     for name, text in (("status", "查看任意状态的计划"), ("approve", "批准草稿（只记录在本地，不修改网站）"),
@@ -66,6 +71,7 @@ def main():
         plan = {
             "create": lambda: preview.create(args.subject_id, args.episode_id, args.ttl_seconds),
             "create-up-to": lambda: preview.create_up_to(args.subject_id, args.episode_id, args.ttl_seconds),
+            "create-change": lambda: preview.create_change(args.subject_id, args.episode_ids, args.state, args.ttl_seconds),
             "show": lambda: preview.show(args.plan_id),
             "status": lambda: confirm.store.get_plan(args.plan_id, account_id=client.get_me()["id"]),
             "approve": lambda: confirm.approve(args.plan_id),
