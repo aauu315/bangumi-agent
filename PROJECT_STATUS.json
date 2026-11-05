@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-08",
   "next_task": "S3-08",
-  "next_action": "开始 S3-08（学习卡）：先讲清要写的函数和 create_up_to 的写法，请用户决定卡片列出的规则；助手写失败测试，用户写 create_change，通过后助手补工程部分并给交接清单。",
+  "next_action": "S3-08：用户在 progress.py 写 create_change，直到 tests/test_progress_change.py 通过并做变异检查；之后助手写迁移、写入器和 MCP 工具。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-06 新增练习卡 S3-08 并设为下一步；S3 各卡的 can_modify 补充 learning_scope 范围说明。",
+  "last_update_summary": "2026-11-06 S3-08 开工：用户定四条规则，助手写好 11 项失败测试和占位函数，等用户写实现。",
   "next_session": {
     "goal": "S3-08 通用进度修改工具（学习卡）",
     "timebox": "学习 0.5h，用户写代码 1–2h，助手工程部分 1–2h",
@@ -199,8 +199,10 @@
     },
     {
       "id": "S3-08",
-      "status": "ready",
-      "evidence": [],
+      "status": "active",
+      "evidence": [
+        "docs/LOG.md#s3-08"
+      ],
       "learning": "not_checked",
       "blocker": null
     },
