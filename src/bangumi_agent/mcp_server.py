@@ -12,21 +12,26 @@ from bangumi_agent import api_client
 
 mcp = MCPServer("Bangumi Agent")
 
+# Parameters several tools share. These descriptions reach the model through the tool schema.
+SubjectId = Annotated[int, Field(description="条目ID，来自搜索结果或条目链接；不是章节ID，也不是第几集", gt=0)]
+Offset = Annotated[int, Field(description="跳过的记录数，不是页码", ge=0)]
+EpisodeType = Annotated[int | None, Field(
+    description="章节种类：0本篇、1特别篇、2 OP、3 ED、4预告宣传、5 MAD、6其他；null表示全部", ge=0, le=6)]
+
 
 @mcp.tool()
-def search_subjects(keyword: str, limit: int = 10, offset: int = 0) -> dict:
+def search_subjects(
+    keyword: Annotated[str, Field(description="搜索关键词，不能是空白")],
+    limit: Annotated[int, Field(description="本次最多返回多少条", ge=1, le=20)] = 10,
+    offset: Offset = 0,
+) -> dict:
     """按关键词搜索公开的 Bangumi 条目，返回一页候选。
-    
-        适用于用户提供作品名称或关键词、尚不知道条目 ID 的情况。
-        keyword：搜索关键词，不能是空白。
-        limit：本次最多返回多少条，范围 1～20，默认 10。
-        offset：跳过的记录数，必须非负，默认 0；不是页码。
-    
-        返回 total、limit、offset 和 data。
-        data 中每项包含 id、name、name_cn、type、url。
-        搜索可能返回同名作品及不同类型条目，应结合名称和类型
-        确认目标；无法确定时询问用户，再用 get_subject 查询详情。
-        本工具只读，无需账户凭据，不修改收藏。
+
+    适用于用户提供作品名称或关键词、尚不知道条目 ID 的情况。
+    返回 total、limit、offset 和 data；data 中每项包含 id、name、name_cn、type、url。
+    搜索可能返回同名作品及不同类型条目，应结合名称和类型确认目标；
+    无法确定时询问用户，再用 get_subject 查询详情。
+    本工具只读，无需账户凭据，不修改收藏。
     """
     try:
         return api_client.search_subjects(keyword, limit, offset)
@@ -35,17 +40,13 @@ def search_subjects(keyword: str, limit: int = 10, offset: int = 0) -> dict:
 
 
 @mcp.tool()
-def get_subject(subject_id: int) -> dict:
+def get_subject(subject_id: SubjectId) -> dict:
     """按 Bangumi 条目 ID 查询公开详情。
-    
-        subject_id：正整数条目 ID，应来自搜索结果或明确的条目链接，
-        不能使用章节 ID、集数或搜索结果的数组下标代替。
-    
-        返回名称、类型、简介、日期、集数、评分、图片和条目链接等字段；
-        部分字段可能为空。
-        eps 和 total_episodes 是作品信息，不是本人的观看进度。
-        本工具只读，无需账户凭据，不查询或修改个人收藏。
-        条目不存在或请求失败时返回工具错误，不能当作查询成功。
+
+    返回名称、类型、简介、日期、集数、评分、图片和条目链接等字段；部分字段可能为空。
+    eps 和 total_episodes 是作品信息，不是本人的观看进度。
+    本工具只读，无需账户凭据，不查询或修改个人收藏。
+    条目不存在或请求失败时返回工具错误，不能当作查询成功。
     """
     try:
         return api_client.get_subject(subject_id)
@@ -54,10 +55,12 @@ def get_subject(subject_id: int) -> dict:
 
 
 @mcp.tool()
-def preview_episode_watched(subject_id: int, episode_id: int) -> dict:
+def preview_episode_watched(
+    subject_id: SubjectId,
+    episode_id: Annotated[int, Field(description="章节ID，来自get_episodes；不是第几集", gt=0)],
+) -> dict:
     """只读核对本人收藏及章节归属，创建单章节准备标记看过的本地草稿。
 
-    subject_id、episode_id必须是正整数网站ID；episode_id不是第几集。
     仅在用户明确选定目标后调用；默认使用本机.secrets/bangumi-token.txt，
     不接受或要求用户在聊天传Token。计划有效期15分钟，保存账号、修改前后状态。
     返回创建时的快照，不代表当前实时状态。本工具不会批准或执行修改；
@@ -147,12 +150,12 @@ def _ask_user(plan_id: str, ctx: Context) -> Elicit[EpisodeApproval]:
 
 @mcp.tool()
 def execute_episode_plan(
-    plan_id: str,
+    plan_id: Annotated[str, Field(description="计划ID，来自preview_episode_watched")],
     answer: Annotated[ElicitationResult[EpisodeApproval], Resolve(_ask_user)],
 ) -> dict:
     """请用户确认并执行一份已创建的预览计划，把该章节标记为看过。
 
-    plan_id来自preview_episode_watched。本工具会让客户端直接向用户弹窗显示具体修改，
+    本工具会让客户端直接向用户弹窗显示具体修改，
     只有用户本人点击确认才会写入Bangumi；不能代替用户确认，转述用户的同意也不算确认。
     未确认或客户端不支持弹窗时不写入。popup_result为decline或cancel时，也可能是客户端
     没有显示弹窗就自动回答，不要说成用户拒绝，请询问用户是否看到了弹窗。写入后读回核对，
@@ -183,14 +186,16 @@ def _account_client():
 
 
 @mcp.tool()
-def get_episodes(subject_id: int, limit: int = 40, offset: int = 0, episode_type: int | None = 0,
-                 include_summary: bool = False) -> dict:
+def get_episodes(
+    subject_id: SubjectId,
+    limit: Annotated[int, Field(description="本次最多返回多少集", ge=1, le=40)] = 40,
+    offset: Offset = 0,
+    episode_type: EpisodeType = 0,
+    include_summary: Annotated[bool, Field(description="是否返回单集简介；很占篇幅，用户问剧情时才打开")] = False,
+) -> dict:
     """查询一个条目的章节列表，用来把“第几集”换成标记进度需要的章节ID。
 
     不含个人观看状态；要看本人看到哪一集用get_my_episode_states。
-    subject_id：条目ID，不是章节ID。limit：1～40，默认40。offset：跳过的记录数，不是页码。
-    episode_type：0本篇（默认）、1特别篇、2 OP、3 ED、4预告宣传、5 MAD、6其他；None表示全部。
-    include_summary：是否返回单集简介，默认否，用户问剧情时才打开，因为简介很占篇幅。
     返回total、next_offset和data；data每项含episode_id、sort（总序号）、ep（本季第几集）、
     name、name_cn、airdate、duration。长篇作品用offset直接跳到附近，例如本篇第500集用offset=499附近。
     本工具只读，无需账户凭据。
@@ -199,10 +204,11 @@ def get_episodes(subject_id: int, limit: int = 40, offset: int = 0, episode_type
 
 
 @mcp.tool()
-def get_calendar(weekday: int | None = None) -> dict:
+def get_calendar(
+    weekday: Annotated[int | None, Field(description="1星期一～7星期日；不传表示今天（按本机日期）", ge=1, le=7)] = None,
+) -> dict:
     """查询某一天正在放送的动画，用于“今天播什么”“周三有什么新番”。
 
-    weekday：1星期一～7星期日；不传表示今天（按本机日期）。
     返回weekday、weekday_cn、total和data；data每项含subject_id、name、name_cn、air_date（开播日）、
     score、url。这是每周放送表，不是某一集的具体更新时间。本工具只读，无需账户凭据。
     """
@@ -210,10 +216,14 @@ def get_calendar(weekday: int | None = None) -> dict:
 
 
 @mcp.tool()
-def get_subject_characters(subject_id: int, limit: int = 20, offset: int = 0) -> dict:
+def get_subject_characters(
+    subject_id: SubjectId,
+    limit: Annotated[int, Field(description="本次最多返回多少个角色", ge=1, le=50)] = 20,
+    offset: Offset = 0,
+) -> dict:
     """查询条目的角色和配音演员，用于“这部有哪些角色”“某角色是谁配的”。
 
-    制作人员（导演、编剧等）用get_subject_persons。limit：1～50，默认20。offset：跳过的记录数。
+    制作人员（导演、编剧等）用get_subject_persons。
     返回total、next_offset和data；data每项含character_id、name、relation（主角、配角等）、
     actors（person_id、name）。本工具只读，无需账户凭据。
     """
@@ -221,12 +231,15 @@ def get_subject_characters(subject_id: int, limit: int = 20, offset: int = 0) ->
 
 
 @mcp.tool()
-def get_subject_persons(subject_id: int, relation: str | None = None, limit: int = 30,
-                        offset: int = 0) -> dict:
+def get_subject_persons(
+    subject_id: SubjectId,
+    relation: Annotated[str | None, Field(description="职位关键词，按包含匹配，例如“导演”“脚本”“动画制作”")] = None,
+    limit: Annotated[int, Field(description="本次最多返回多少人", ge=1, le=50)] = 30,
+    offset: Offset = 0,
+) -> dict:
     """查询条目的制作人员，用于“导演是谁”“谁写的脚本”“哪家公司做的”。
 
     配音演员用get_subject_characters。人员可能有几百条，能确定职位时请传relation筛选。
-    relation：职位关键词，按包含匹配，例如“导演”“脚本”“动画制作”。limit：1～50，默认30。
     返回total、next_offset和data；data每项含person_id、name、relation、eps（参与集数，可能为空）。
     本工具只读，无需账户凭据。
     """
@@ -234,7 +247,7 @@ def get_subject_persons(subject_id: int, relation: str | None = None, limit: int
 
 
 @mcp.tool()
-def get_subject_relations(subject_id: int) -> dict:
+def get_subject_relations(subject_id: SubjectId) -> dict:
     """查询与条目相关联的其他条目，用于“有没有续作”“前传是哪部”“原作是什么”。
 
     返回total和data；data每项含subject_id、name、name_cn、relation（续集、前传、书籍等）、
@@ -244,13 +257,15 @@ def get_subject_relations(subject_id: int) -> dict:
 
 
 @mcp.tool()
-def get_my_collections(collection_type: int = 3, subject_type: int = 2, limit: int = 20,
-                       offset: int = 0, include_comment: bool = False) -> dict:
+def get_my_collections(
+    collection_type: Annotated[int, Field(description="收藏状态：1想看、2看过、3在看、4搁置、5抛弃", ge=1, le=5)] = 3,
+    subject_type: Annotated[int, Field(description="条目类型：1书籍、2动画、3音乐、4游戏、6三次元")] = 2,
+    limit: Annotated[int, Field(description="本次最多返回多少条", ge=1, le=50)] = 20,
+    offset: Offset = 0,
+    include_comment: Annotated[bool, Field(description="是否同时返回短评、评分、标签和私密标记；用户问到时才打开")] = False,
+) -> dict:
     """查询当前Token本人的收藏列表，用于“我在看什么”“我想看什么”“我看过哪些”。用户询问我看到第几集类似问题应使用“get_my_episode_states”
 
-    collection_type：1想看、2看过、3在看（默认）、4搁置、5抛弃。
-    subject_type：1书籍、2动画（默认）、3音乐、4游戏、6三次元。limit：1～50。offset：跳过的记录数。
-    include_comment：是否同时返回短评、评分、标签和私密标记，默认否，用户问到时才打开。
     返回total、complete、next_offset和data；data每项含subject_id、name、name_cn、ep_status（一共看过的集数，会包括OP、ED等非正片，涉及到用户可能不按顺序看以及非正片标记的问题，所以本参数不能体现用户看到第几集）、
     vol_status、url。需要本机Token（不用用户在聊天里提供），只读，不修改收藏。
     """
@@ -260,14 +275,18 @@ def get_my_collections(collection_type: int = 3, subject_type: int = 2, limit: i
 
 
 @mcp.tool()
-def get_my_episode_states(subject_id: int, limit: int = 40, offset: int = 0,
-                          episode_type: int | None = 0, include_summary: bool = False) -> dict:
+def get_my_episode_states(
+    subject_id: SubjectId,
+    limit: Annotated[int, Field(description="本次最多返回多少集", ge=1, le=50)] = 40,
+    offset: Offset = 0,
+    episode_type: EpisodeType = 0,
+    include_summary: Annotated[bool, Field(description="是否返回单集简介；很占篇幅，用户问剧情时才打开")] = False,
+) -> dict:
     """查询当前Token本人在某条目每一集的观看状态，用于“这部我看到第几集”“下一集是哪集”。
 
-    type：0未收藏、1想看、2看过、3抛弃。条目必须已收藏，否则报错。
-    limit：1～50，默认40。offset：跳过的记录数。episode_type：0本篇（默认）、1特别篇、2 OP、3 ED、4预告宣传、5 MAD、6其他；None表示全部。
-    include_summary：是否返回单集简介，默认否。
-    返回total、complete、next_offset和data；data每项含episode_id、type、sort、ep、name、name_cn。
+    条目必须已收藏，否则报错。
+    返回total、complete、next_offset和data；data每项含episode_id、type（观看状态：0未收藏、1想看、2看过、3抛弃）、
+    sort、ep、name、name_cn。
     需要本机Token（不用用户在聊天里提供），只读，不修改收藏；要标记看过用preview_episode_watched。
     """
     with _safe_tool_errors():

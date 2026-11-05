@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-05",
   "next_task": "S3-05",
-  "next_action": "S3-05：用户修改 get_my_collections 说明里的 ep_status 并在 Codex 复测；之后决定是否加 get_my_collection 和写入类工具接口。",
+  "next_action": "S3-05 剩：用户在客户端回归一次；决定是否加 get_my_collection；决定写入类工具接口并写入 docs/tools.md；核实 ep_status 是否包含非正片。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-05 S3-05：用户改 ep_status 说明，Codex 复测不再误判进度。",
+  "last_update_summary": "2026-11-05 S3-05：用户改说明后复测通过；参数说明改为逐参数写法，67 项测试通过，客户端未回归。",
   "next_session": {
     "goal": "S3-05 扩充只读工具集（产出卡）",
     "timebox": "见 PLAN S3-05 卡",

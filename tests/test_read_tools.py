@@ -117,6 +117,20 @@ class McpReadToolsTest(unittest.TestCase):
                 return await client.call_tool(name, arguments)
         return asyncio.run(run())
 
+    def test_every_tool_parameter_is_described_for_the_model(self):
+        async def tools():
+            async with Client(mcp) as client:
+                return (await client.list_tools()).tools
+        for tool in asyncio.run(tools()):
+            for name, schema in tool.input_schema["properties"].items():
+                with self.subTest(tool=tool.name, parameter=name):
+                    self.assertTrue(schema.get("description"))
+
+    def test_out_of_range_argument_is_refused_before_any_request(self):
+        with patch.object(api_client, "_request_list") as request:
+            self.assertTrue(self.call("get_subject_persons", {"subject_id": 100, "limit": 51}).is_error)
+        request.assert_not_called()
+
     def test_public_tool_returns_projection_and_reports_api_failure(self):
         with patch.object(api_client, "_request_json", return_value={"total": 1, "data": [EPISODE]}):
             result = self.call("get_episodes", {"subject_id": 100})
