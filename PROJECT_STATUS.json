@@ -11,20 +11,18 @@
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S3",
-  "current_task": "S3-07",
-  "next_task": "S3-07",
-  "next_action": "S3-07：用户确认网页上第 2、4 集为看过、OP/ED 未变，之后验收。",
+  "current_task": "S4-01",
+  "next_task": "S4-01",
+  "next_action": "开始 S4-01：先读 PLAN 卡片，说明目标、卡片类型和分工。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-06 S3-07：批量“看到”真实写入，读回 verified；网页结果待用户确认。补写 S3 各卡问答记录。",
+  "last_update_summary": "2026-11-06 S3-07 完成：批量“看到”真实写入，读回和网页一致；S3 各卡完成，下一步 S4-01。",
   "next_session": {
-    "goal": "S3-07 “看到第 N 集”与其他进度操作（学习卡）",
-    "timebox": "见 PLAN S3-07 卡",
+    "goal": "S4-01（见 PLAN）",
+    "timebox": "见 PLAN S4-01 卡",
     "steps": [
-      "用户在网页点一次“看到”观察效果并定选集规则",
-      "用户设计并测试批量读回只成功一部分的判定",
-      "助手写数据库迁移、批量写入器和入口"
+      "读卡片并确认分工"
     ],
-    "stop_when": "按 PLAN S3-07 通过标准。"
+    "stop_when": "按 PLAN S4-01 通过标准。"
   },
   "known_blockers": [],
   "future_requirements": [
@@ -181,16 +179,16 @@
     },
     {
       "id": "S3-07",
-      "status": "verify",
+      "status": "done",
       "evidence": [
         "docs/LOG.md#s3-07"
       ],
-      "learning": "not_checked",
+      "learning": "can_modify",
       "blocker": null
     },
     {
       "id": "S4-01",
-      "status": "planned",
+      "status": "ready",
       "evidence": [],
       "learning": "not_checked",
       "blocker": null
