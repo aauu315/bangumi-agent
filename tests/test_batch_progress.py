@@ -111,6 +111,16 @@ class SelectionRuleTest(BatchTestCase):
             plan = self.preview().create_up_to(100, 7027)
         self.assertEqual({item["episode_id"] for item in plan["items"]}, {519, 7027})
 
+    def test_preview_shows_the_season_number_but_selects_by_sort(self):
+        # Attack on Titan season 2: sort carries on from season 1, ep restarts.
+        rows = [{"episode_id": 500 + sort, "type": UNSEEN, "sort": sort, "ep": sort - 25, "name": "集", "name_cn": None}
+                for sort in (26, 27, 28)]
+        pages = {"data": rows, "total": 3, "complete": True}
+        with patch.object(self.site, "get_all_my_episode_states", return_value=pages):
+            plan = self.preview().create_up_to(100, 527)
+        self.assertEqual([item["episode_sort"] for item in plan["items"]], ["1", "2"])
+        self.assertIn("第1、2集", approval_message(plan))
+
     def test_only_main_episodes_are_read(self):
         with patch.object(self.site, "get_all_my_episode_states", wraps=self.site.get_all_my_episode_states) as read:
             self.preview().create_up_to(100, 9005)

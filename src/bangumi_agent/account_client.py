@@ -189,7 +189,7 @@ class AccountClient:
                 or episode["subject_id"] <= 0 or type(state) is not int or state not in (0, 1, 2, 3)):
             raise AccountReadError("章节身份、所属条目或收藏状态无效")
         return {"episode_id": episode_id, "subject_id": episode["subject_id"],
-                "type": state, "sort": episode.get("sort"),
+                "type": state, "sort": episode.get("sort"), "ep": episode.get("ep"),
                 "name": self._redact(episode.get("name_cn") or episode.get("name") or "")}
 
     def get_my_episode_states(self, subject_id, limit=40, offset=0, episode_type=None,

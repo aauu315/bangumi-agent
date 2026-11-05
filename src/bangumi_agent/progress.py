@@ -7,6 +7,11 @@ from .storage import PlanError
 SKIPPED_STATES = {2: "已看过", 3: "已抛弃"}
 
 
+def _shown_number(episode):
+    """The number the user knows it by: ep restarts each season. SP and OP have ep 0, so use sort."""
+    return episode.get("ep") or episode["sort"]
+
+
 class ProgressPreview:
     def __init__(self, client, store, clock=time.time):
         self.client, self.store, self.clock = client, store, clock
@@ -28,7 +33,7 @@ class ProgressPreview:
         plan_id = self.store.create(
             account_id=me["id"], subject_id=subject_id, episode_id=episode_id,
             subject_name=subject["name"], episode_name=episode["name"],
-            episode_sort=episode["sort"], before_type=episode["type"],
+            episode_sort=_shown_number(episode), before_type=episode["type"],
             created_at=now, expires_at=now + ttl_seconds,
         )
         return self.store.get_preview(plan_id, account_id=me["id"], now=now)
@@ -56,11 +61,11 @@ class ProgressPreview:
                 continue
             name = row["name_cn"] or row["name"] or ""
             if row["type"] in SKIPPED_STATES:
-                skipped.append({"episode_sort": row["sort"], "episode_name": name,
+                skipped.append({"episode_sort": _shown_number(row), "episode_name": name,
                                 "reason": SKIPPED_STATES[row["type"]]})
             else:
                 items.append({"episode_id": row["episode_id"], "episode_name": name,
-                              "episode_sort": row["sort"], "before_type": row["type"]})
+                              "episode_sort": _shown_number(row), "before_type": row["type"]})
         if not items:
             raise PlanError("这些章节都已看过或已抛弃，无需创建修改计划")
         now = int(self.clock())

@@ -224,7 +224,7 @@ def get_episodes(
     """查询一个条目的章节列表，用来把“第几集”换成标记进度需要的章节ID。
 
     不含个人观看状态；要看本人看到哪一集用get_my_episode_states。
-    返回total、next_offset和data；data每项含episode_id、episode_type（章节种类，取值同参数）、sort（总序号）、ep（本季第几集）、
+    返回total、next_offset和data；data每项含episode_id、episode_type（章节种类，取值同参数）、sort（总序号；SP可能是18.5这样的小数，OP、ED从1单独计）、ep（本季第几集，非本篇为0）、
     name、name_cn、airdate、duration。长篇作品用offset直接跳到附近，例如本篇第500集用offset=499附近。
     本工具只读，无需账户凭据。
     """
