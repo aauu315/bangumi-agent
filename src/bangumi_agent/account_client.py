@@ -119,7 +119,8 @@ class AccountClient:
                 "data": self._redact(items), "complete": complete,
                 "next_offset": None if complete else next_offset}
 
-    def get_my_collections(self, limit=20, offset=0, subject_type=2, collection_type=3):
+    def get_my_collections(self, limit=20, offset=0, subject_type=2, collection_type=3,
+                           include_comment=False):
         """One page of this token owner's collections; type=3 means watching."""
         _pagination(limit, offset)
         if type(subject_type) is not int or subject_type not in (1, 2, 3, 4, 6):
@@ -146,10 +147,14 @@ class AccountClient:
             subject = subject or {}
             if subject.get("id", sid) != sid:
                 raise AccountReadError("收藏条目ID不一致")
-            return {"subject_id": sid, "subject_type": subject_type, "type": collection_type,
+            item = {"subject_id": sid, "subject_type": subject_type, "type": collection_type,
                     "name": subject.get("name"), "name_cn": subject.get("name_cn"),
                     "ep_status": row.get("ep_status"), "vol_status": row.get("vol_status"),
                     "url": f"https://bgm.tv/subject/{sid}"}
+            if include_comment:
+                item.update(comment=row.get("comment"), rate=row.get("rate"),
+                            tags=row.get("tags"), private=row.get("private"))
+            return item
 
         return self._page(data, limit, offset, convert)
 
@@ -181,12 +186,18 @@ class AccountClient:
                 "type": state, "sort": episode.get("sort"),
                 "name": self._redact(episode.get("name_cn") or episode.get("name") or "")}
 
-    def get_my_episode_states(self, subject_id, limit=40, offset=0):
+    def get_my_episode_states(self, subject_id, limit=40, offset=0, episode_type=None,
+                              include_summary=False):
         """One page of actual episode IDs and this token owner's collection states."""
         _positive(subject_id, "subject_id")
         _pagination(limit, offset)
+        if episode_type is not None and (type(episode_type) is not int or episode_type not in range(7)):
+            raise ValueError("episode_type必须是0到6的整数")
         self.get_me()
-        query = urlencode({"limit": limit, "offset": offset})
+        params = {"limit": limit, "offset": offset}
+        if episode_type is not None:
+            params["episode_type"] = episode_type
+        query = urlencode(params)
         data = self._get(f"/v0/users/-/collections/{subject_id}/episodes?{query}")
 
         def convert(row):
@@ -198,9 +209,12 @@ class AccountClient:
                 raise AccountReadError("章节ID或收藏状态无效")
             if episode.get("subject_id", subject_id) != subject_id:
                 raise AccountReadError("章节不属于请求条目")
-            return {"episode_id": eid, "type": state, "name": episode.get("name"),
+            item = {"episode_id": eid, "type": state, "name": episode.get("name"),
                     "name_cn": episode.get("name_cn"), "sort": episode.get("sort"),
                     "ep": episode.get("ep")}
+            if include_summary:
+                item["summary"] = episode.get("desc")
+            return item
 
         return self._page(data, limit, offset, convert)
 

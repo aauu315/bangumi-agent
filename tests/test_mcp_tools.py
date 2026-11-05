@@ -18,7 +18,9 @@ class McpToolsTest(unittest.TestCase):
         async def exercise():
             async with Client(mcp) as client:
                 tools = (await client.list_tools()).tools
-                self.assertEqual({tool.name for tool in tools}, {"search_subjects", "get_subject", "preview_episode_watched", "execute_episode_plan"})
+                self.assertEqual({tool.name for tool in tools}, {"search_subjects", "get_subject", "preview_episode_watched", "execute_episode_plan",
+    "get_episodes", "get_calendar", "get_subject_characters", "get_subject_persons", "get_subject_relations",
+    "get_my_collections", "get_my_episode_states"})
                 search_schema = next(tool.input_schema for tool in tools if tool.name == "search_subjects")#next: find the first suitable result
                 self.assertIn("keyword", search_schema["required"])
 
@@ -90,7 +92,9 @@ class McpToolsTest(unittest.TestCase):
             )
             async with Client(server) as client:
                 tools = (await client.list_tools()).tools
-                self.assertEqual({tool.name for tool in tools}, {"search_subjects", "get_subject", "preview_episode_watched", "execute_episode_plan"})
+                self.assertEqual({tool.name for tool in tools}, {"search_subjects", "get_subject", "preview_episode_watched", "execute_episode_plan",
+    "get_episodes", "get_calendar", "get_subject_characters", "get_subject_persons", "get_subject_relations",
+    "get_my_collections", "get_my_episode_states"})
                 result = await client.call_tool("get_subject", {"subject_id": 0})
                 self.assertTrue(result.is_error)
 
