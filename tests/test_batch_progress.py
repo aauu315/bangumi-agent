@@ -121,6 +121,16 @@ class SelectionRuleTest(BatchTestCase):
         self.assertEqual([item["episode_sort"] for item in plan["items"]], ["1", "2"])
         self.assertIn("第1、2集", approval_message(plan))
 
+    def test_fractional_main_episodes_are_selected_and_shown(self):
+        # Real data: NANA (486) has recap episodes numbered 11.5, 21.5 and 36.5 as main episodes.
+        rows = [{"episode_id": episode_id, "type": UNSEEN, "sort": sort, "ep": sort, "name": "集", "name_cn": None}
+                for episode_id, sort in ((40222, 11), (40223, 11.5), (40224, 12), (40225, 13))]
+        pages = {"data": rows, "total": 4, "complete": True}
+        with patch.object(self.site, "get_all_my_episode_states", return_value=pages):
+            plan = self.preview().create_up_to(100, 40224)
+        self.assertEqual([item["episode_id"] for item in plan["items"]], [40222, 40223, 40224])
+        self.assertIn("第11、11.5、12集", approval_message(plan))
+
     def test_only_main_episodes_are_read(self):
         with patch.object(self.site, "get_all_my_episode_states", wraps=self.site.get_all_my_episode_states) as read:
             self.preview().create_up_to(100, 9005)
