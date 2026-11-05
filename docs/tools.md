@@ -16,6 +16,7 @@
 | `get_subject_persons` | 制作人员 | 否 | subject_id, relation, limit, offset | person_id, name, relation, eps |
 | `get_subject_relations` | 续作、前传、原作等 | 否 | subject_id | subject_id, name, name_cn, relation, type, url |
 | `get_my_collections` | 本人收藏列表 | 是 | collection_type=3, subject_type=2, limit, offset, include_comment=false | subject_id, name, name_cn, ep_status, vol_status, url；可选 comment, rate, tags, private |
+| `get_my_collection` | 本人对某部作品的收藏记录 | 是 | subject_id | subject_id, type, name, ep_status, vol_status, comment, rate, tags, private, url |
 | `get_my_episode_states` | 本人每集观看状态 | 是 | subject_id, limit, offset, episode_type=0, include_summary=false | episode_id, type, sort, ep, name, name_cn；可选 summary |
 
 `get_calendar` 用的 `/calendar` 不在官方 v0 文档里，2026-11-05 实测可用，稳定性没有文档保证。

@@ -1,6 +1,6 @@
 """Authenticated GET-only account reads; no writes, cookies or MCP dependency."""
 import json
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -158,7 +158,7 @@ class AccountClient:
 
         return self._page(data, limit, offset, convert)
 
-    def get_my_collection(self, subject_id):
+    def get_my_collection(self, subject_id) -> dict[str, Any]:
         """Read one existing subject collection belonging to the token owner."""
         _positive(subject_id, "subject_id")
         username = quote(self.get_me()["username"], safe="")
@@ -169,8 +169,14 @@ class AccountClient:
         subject = row.get("subject") or {}
         if not isinstance(subject, dict) or subject.get("id", subject_id) != subject_id:
             raise AccountReadError("收藏条目ID不一致")
-        return self._redact({"subject_id": subject_id, "type": row["type"],
-                             "name": subject.get("name_cn") or subject.get("name") or ""})
+        return cast(dict[str, Any], self._redact({
+            "subject_id": subject_id, "type": row["type"],
+            "name": subject.get("name_cn") or subject.get("name") or "",
+            "ep_status": row.get("ep_status"), "vol_status": row.get("vol_status"),
+            "comment": row.get("comment"), "rate": row.get("rate"),
+            "tags": row.get("tags"), "private": row.get("private"),
+            "url": f"https://bgm.tv/subject/{subject_id}",
+        }))
 
     def get_my_episode_state(self, episode_id) -> dict[str, Any]:
         """Read one episode and its subject ID, without changing its state."""

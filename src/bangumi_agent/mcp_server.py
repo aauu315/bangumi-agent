@@ -275,6 +275,19 @@ def get_my_collections(
 
 
 @mcp.tool()
+def get_my_collection(subject_id: SubjectId) -> dict:
+    """查询当前Token本人对某一部作品的收藏记录，用于“这部我收藏了吗”“我给这部写过短评吗”“我给这部打了几分”“这部一共标了几集”。
+
+    用户询问我看到第几集、下一集是哪集，应使用get_my_episode_states。
+    返回subject_id、type（收藏状态：1想看、2看过、3在看、4搁置、5抛弃）、name、ep_status（一共看过的集数，会包括OP、ED等非正片，不能体现用户看到第几集）、
+    vol_status、comment（短评）、rate（评分，0表示未评分）、tags、private（是否私密）、url。
+    没有收藏时返回工具错误。需要本机Token（不用用户在聊天里提供），只读，不修改收藏。
+    """
+    with _safe_tool_errors():
+        return _account_client().get_my_collection(subject_id)
+
+
+@mcp.tool()
 def get_my_episode_states(
     subject_id: SubjectId,
     limit: Annotated[int, Field(description="本次最多返回多少集", ge=1, le=50)] = 40,

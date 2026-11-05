@@ -90,6 +90,13 @@ class AccountReadTest(unittest.TestCase):
         patch.object(client, "_get", side_effect=[self.ME, page]).start()
         return client
 
+    def test_one_collection_includes_progress_and_comment(self):
+        row = {"subject_id": 253, "type": 3, "ep_status": 5, "comment": "我的短评", "rate": 8,
+               "tags": ["科幻"], "private": True, "subject": {"id": 253, "name": "x", "summary": "不返回"}}
+        result = self.client(row).get_my_collection(253)
+        self.assertEqual((result["ep_status"], result["comment"], result["private"]), (5, "我的短评", True))
+        self.assertNotIn("subject", result)
+
     def test_comment_and_private_mark_only_when_asked(self):
         page = {"total": 1, "limit": 20, "offset": 0, "data": [{
             "subject_id": 253, "subject_type": 2, "type": 3, "ep_status": 5, "subject": {"id": 253, "name": "x"},
