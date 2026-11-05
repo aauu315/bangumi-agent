@@ -1163,9 +1163,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 尚未开始正式调查，先记线索。文档存于 `work/bangumi-p1-openapi.json`（来自 `https://next.bgm.tv/p1/openapi.json`，版本 2026-10-31-9eea81e，不进 git）。
 
 - 共 216 个接口，含日志、小组、话题、吐槽、超展开、时间线、通知、好友、目录、热门、wiki。官方开发说明称其“专为新网站前端开发”，没有承诺兼容性。
-- 认证：文档里 204 个接口同时列出 Cookie 和 Bearer，说明写着“使用 demo 登录后创建个人令牌”，服务端代码 `lib/auth/index.ts` 也有 Bearer 校验。用现有 Token 调用尚未实测。
+- 认证：文档里 204 个接口同时列出 Cookie 和 Bearer，说明写着“使用 demo 登录后创建个人令牌”，服务端代码 `lib/auth/index.ts` 也有 Bearer 校验。
+- 个人令牌实测（2026-11-05，用户要求，只读，脚本不输出令牌和资料）：`/p1/me` 带令牌 200 且与 `/v0/me` 同一账号，不带 401；`/p1/collections/subjects`、`/p1/notify`、`/p1/timeline`、`/p1/friendlist` 带令牌均 200。写入接口未测。
 - 匿名只读实测（2026-11-05，各 1 次）：条目、小组详情、小组话题列表、日志、超展开、条目吐槽、章节吐槽均 HTTP 200；`/p1/me` 为 401。
-- 发布受限：发日志、发话题、回复、各类吐槽、发时间线共 15 个接口要求 Cloudflare Turnstile 人机验证（服务端 `requireTurnstileToken`），外加登录接口。Agent 不能代过验证，这类发布需要用户本人在浏览器里完成验证，方案待定。编辑、删除、点赞和收藏类接口的文档未列出该要求。
+- 发布受限：发日志、发话题、回复、各类吐槽、发时间线共 15 个接口要求 Cloudflare Turnstile 人机验证（服务端 `requireTurnstileToken`），外加登录接口。Agent 不能代过验证，这类发布需要用户本人在浏览器里完成验证。官方流程：`GET /p1/turnstile?redirect_uri=...` 打开验证页，用户通过后带令牌跳回客户端；redirect_uri 走白名单，第三方提交 PR 申请。代码里已列出 ani、banguLite、Anix、AniMikan、Kaku、bangumi-cmp 等客户端的回调，最近一次新增是 2026-08-19。本项目尚未申请，不借用别的客户端的回调。编辑、删除、点赞和收藏类接口的文档未列出该要求。
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
