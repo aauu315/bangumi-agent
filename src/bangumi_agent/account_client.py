@@ -217,7 +217,7 @@ class AccountClient:
                 raise AccountReadError("章节不属于请求条目")
             item = {"episode_id": eid, "type": state, "name": episode.get("name"),
                     "name_cn": episode.get("name_cn"), "sort": episode.get("sort"),
-                    "ep": episode.get("ep")}
+                    "ep": episode.get("ep"), "episode_type": episode.get("type")}
             if include_summary:
                 item["summary"] = episode.get("desc")
             return item

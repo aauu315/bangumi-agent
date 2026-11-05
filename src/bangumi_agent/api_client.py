@@ -224,7 +224,7 @@ def list_episodes(subject_id: int, limit: int = 40, offset: int = 0, episode_typ
 
     def convert(row):
         item = {"episode_id": row["id"], "sort": row.get("sort"), "ep": row.get("ep"),
-                "type": row.get("type"), "name": row.get("name"), "name_cn": row.get("name_cn"),
+                "episode_type": row.get("type"), "name": row.get("name"), "name_cn": row.get("name_cn"),
                 "airdate": row.get("airdate"), "duration": row.get("duration")}
         return {**item, "summary": row.get("desc")} if include_summary else item
 

@@ -196,7 +196,7 @@ def get_episodes(
     """查询一个条目的章节列表，用来把“第几集”换成标记进度需要的章节ID。
 
     不含个人观看状态；要看本人看到哪一集用get_my_episode_states。
-    返回total、next_offset和data；data每项含episode_id、sort（总序号）、ep（本季第几集）、
+    返回total、next_offset和data；data每项含episode_id、episode_type（章节种类，取值同参数）、sort（总序号）、ep（本季第几集）、
     name、name_cn、airdate、duration。长篇作品用offset直接跳到附近，例如本篇第500集用offset=499附近。
     本工具只读，无需账户凭据。
     """
@@ -299,7 +299,7 @@ def get_my_episode_states(
 
     条目必须已收藏，否则报错。
     返回total、complete、next_offset和data；data每项含episode_id、type（观看状态：0未收藏、1想看、2看过、3抛弃）、
-    sort、ep、name、name_cn。
+    episode_type（章节种类：0本篇、1特别篇、2 OP、3 ED、4预告宣传、5 MAD、6其他）、sort、ep、name、name_cn。
     需要本机Token（不用用户在聊天里提供），只读，不修改收藏；要标记看过用preview_episode_watched。
     """
     with _safe_tool_errors():

@@ -28,7 +28,7 @@ class PublicReadTest(unittest.TestCase):
         with patch.object(api_client, "_request_json", return_value={"total": 3, "data": [EPISODE]}) as request:
             plain = api_client.list_episodes(100, limit=1)
             detailed = api_client.list_episodes(100, limit=1, include_summary=True)
-        self.assertEqual(plain["data"][0]["episode_id"], 9001)
+        self.assertEqual((plain["data"][0]["episode_id"], plain["data"][0]["episode_type"]), (9001, 0))
         self.assertNotIn("summary", plain["data"][0])
         self.assertNotIn("comment", plain["data"][0])
         self.assertEqual(plain["next_offset"], 1)
@@ -113,6 +113,8 @@ class AccountReadTest(unittest.TestCase):
         client = self.client(page)
         row = client.get_my_episode_states(100, episode_type=0, include_summary=True)["data"][0]
         self.assertEqual((row["episode_id"], row["type"], row["summary"]), (9001, 2, "很长的单集简介"))
+        # type is the user's watch state; episode_type says whether this is a main episode, OP, ED...
+        self.assertEqual(row["episode_type"], 0)
         self.assertIn("episode_type=0", client._get.call_args.args[0])  # pyright: ignore[reportAttributeAccessIssue] patched with a mock
         self.assertNotIn("summary", self.client(page).get_my_episode_states(100)["data"][0])
 

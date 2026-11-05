@@ -10,14 +10,14 @@
 |---|---|---|---|---|
 | `search_subjects` | 按关键词找条目 ID | 否 | keyword, limit, offset | id, name, name_cn, type, url |
 | `get_subject` | 条目详情 | 否 | subject_id | 名称、类型、简介、日期、集数、评分、排名、图片、url |
-| `get_episodes` | 章节列表，把“第几集”换成章节 ID | 否 | subject_id, limit, offset, episode_type=0, include_summary=false | episode_id, sort, ep, type, name, name_cn, airdate, duration；可选 summary |
+| `get_episodes` | 章节列表，把“第几集”换成章节 ID | 否 | subject_id, limit, offset, episode_type=0, include_summary=false | episode_id, episode_type, sort, ep, name, name_cn, airdate, duration；可选 summary |
 | `get_calendar` | 某天放送的动画 | 否 | weekday（不传为今天） | weekday, weekday_cn；subject_id, name, name_cn, air_date, score, url |
 | `get_subject_characters` | 角色和配音演员 | 否 | subject_id, limit, offset | character_id, name, relation, actors(person_id, name) |
 | `get_subject_persons` | 制作人员 | 否 | subject_id, relation, limit, offset | person_id, name, relation, eps |
 | `get_subject_relations` | 续作、前传、原作等 | 否 | subject_id | subject_id, name, name_cn, relation, type, url |
 | `get_my_collections` | 本人收藏列表 | 是 | collection_type=3, subject_type=2, limit, offset, include_comment=false | subject_id, name, name_cn, ep_status, vol_status, url；可选 comment, rate, tags, private |
 | `get_my_collection` | 本人对某部作品的收藏记录 | 是 | subject_id | subject_id, type, name, ep_status, vol_status, comment, rate, tags, private, url |
-| `get_my_episode_states` | 本人每集观看状态 | 是 | subject_id, limit, offset, episode_type=0, include_summary=false | episode_id, type, sort, ep, name, name_cn；可选 summary |
+| `get_my_episode_states` | 本人每集观看状态 | 是 | subject_id, limit, offset, episode_type=0, include_summary=false | episode_id, type（观看状态）, episode_type（章节种类）, sort, ep, name, name_cn；可选 summary |
 
 `get_calendar` 用的 `/calendar` 不在官方 v0 文档里，2026-11-05 实测可用，稳定性没有文档保证。
 
