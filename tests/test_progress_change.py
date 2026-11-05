@@ -107,11 +107,10 @@ class CreateChangeTest(unittest.TestCase):
             self.preview.create_change(SUBJECT, [9002, 7777], WATCHED)
         self.assertIsNone(self.store.saved)
 
-    def test_dropped_subject_is_refused(self):
+    def test_dropped_subject_is_allowed(self):
         self.site.collection_type = 5
-        with self.assertRaisesRegex(PlanError, "抛弃"):
-            self.preview.create_change(SUBJECT, [9002], WATCHED)
-        self.assertIsNone(self.store.saved)
+        self.preview.create_change(SUBJECT, [9002], WATCHED)
+        self.assertIsNotNone(self.store.saved)
 
     def test_unfinished_episode_pages_are_refused(self):
         self.site.complete = False
@@ -172,6 +171,23 @@ PRAGMA user_version = 2;
 """
 
 
+# Version 3: the S3-08 layout, before the subject's collection type was saved.
+SCHEMA_V3 = """
+CREATE TABLE operation_plans (
+    plan_id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL, status TEXT NOT NULL, updated_at INTEGER NOT NULL,
+    detail TEXT NOT NULL DEFAULT '', skipped TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE plan_items (
+    plan_id TEXT NOT NULL REFERENCES operation_plans(plan_id), subject_id INTEGER NOT NULL,
+    episode_id INTEGER NOT NULL, subject_name TEXT NOT NULL, episode_name TEXT NOT NULL,
+    episode_sort TEXT NOT NULL, before_type INTEGER NOT NULL, after_type INTEGER NOT NULL,
+    result TEXT, PRIMARY KEY (plan_id, episode_id));
+INSERT INTO operation_plans VALUES ('old', 42, 100, 5000, 'draft', 100, '', '[]');
+INSERT INTO plan_items VALUES ('old', 100, 9001, '测试作品', '集', '1', 2, 0, NULL);
+PRAGMA user_version = 3;
+"""
+
+
 class ChangeWithRealStoreTest(unittest.TestCase):
     """The whole path on a real temporary database; only the site and the write are simulated."""
 
@@ -210,6 +226,36 @@ class ChangeWithRealStoreTest(unittest.TestCase):
         batch = preview.create_change(SUBJECT, [9001, 9002, 9004], WISH)
         for text in ("3集标为想看", "原为看过：第1集", "原为未收藏：第2集", "原为抛弃：第4集"):
             self.assertIn(text, approval_message(batch))
+
+    def test_popup_shows_the_subject_collection_state(self):
+        preview = ProgressPreview(self.site, self.store, lambda: 1000)
+        single = preview.create_change(SUBJECT, [9001], UNSEEN)
+        batch = preview.create_change(SUBJECT, [9001, 9002], WISH)
+        labels = {1: "想看", 2: "看过", 3: "在看", 4: "搁置", 5: "抛弃", None: "未记录"}
+        for plan in (single, batch):
+            for state, label in labels.items():
+                with self.subTest(items=len(plan["items"]), state=state):
+                    self.assertIn(f"条目状态：{label}", approval_message({**plan, "subject_type": state}))
+
+    def test_every_way_of_creating_a_plan_saves_the_subject_state(self):
+        self.site.collection_type = 5
+        preview = ProgressPreview(self.site, self.store, lambda: 1000)
+        creators = {"single": lambda: preview.create(SUBJECT, 9002),
+                    "up_to": lambda: preview.create_up_to(SUBJECT, 9003),
+                    "change": lambda: preview.create_change(SUBJECT, [9002], WISH)}
+        for name, create in creators.items():
+            with self.subTest(name):
+                plan = create()
+                self.assertEqual(plan["subject_type"], 5)
+                self.assertIn("条目状态：抛弃", approval_message(plan))
+
+    def test_version_3_plan_survives_and_shows_no_recorded_state(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.executescript(SCHEMA_V3)
+        old = self.store.get_plan("old", account_id=42)
+        self.assertIsNone(old["subject_type"])
+        self.assertEqual(old["items"][0]["after_type"], UNSEEN)
+        self.assertIn("条目状态：未记录", approval_message(old))
 
     def test_version_2_database_keeps_its_plans_and_accepts_any_target(self):
         with closing(sqlite3.connect(self.path)) as connection:

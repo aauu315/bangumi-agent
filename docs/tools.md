@@ -27,8 +27,8 @@
 |---|---|---|---|
 | `preview_episode_watched` | 建单集标记看过的本地草稿 | 是 | 只写本地 SQLite，不改 Bangumi |
 | `preview_watched_up_to` | 建“看到第 N 集”的本地草稿 | 是 | 程序按规则选集：只算本篇，未收藏和想看改成看过，已看过、已抛弃跳过；只写本地 SQLite |
-| `preview_episode_change` | 建把指定几集改成某状态的本地草稿，撤销也用它 | 是 | episode_ids 为 1～50 个章节 ID（可含 OP、SP），target_state 为 0～3；不属于该作品则整份拒绝，已是目标状态的跳过，已抛弃的作品被拒绝；只写本地 SQLite |
-| `execute_episode_plan` | 弹窗确认后执行草稿 | 是 | 只接收 plan_id；只有用户在客户端弹窗确认才写入；Claude 桌面版 Code 页不弹窗 |
+| `preview_episode_change` | 建把指定几集改成某状态的本地草稿，撤销也用它 | 是 | episode_ids 为 1～50 个章节 ID（可含 OP、SP），target_state 为 0～3；不属于该作品则整份拒绝，已是目标状态的跳过；作品要已收藏，抛弃等状态也可以改；只写本地 SQLite |
+| `execute_episode_plan` | 弹窗确认后执行草稿 | 是 | 只接收 plan_id；只有用户在客户端弹窗确认才写入；弹窗显示条目收藏状态（建预览时的快照，旧计划显示未记录）；Claude 桌面版 Code 页不弹窗 |
 
 ## 还没实现的写入类工具
 

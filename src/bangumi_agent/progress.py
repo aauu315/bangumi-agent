@@ -34,7 +34,7 @@ class ProgressPreview:
             account_id=me["id"], subject_id=subject_id, episode_id=episode_id,
             subject_name=subject["name"], episode_name=episode["name"],
             episode_sort=_shown_number(episode), before_type=episode["type"],
-            created_at=now, expires_at=now + ttl_seconds,
+            created_at=now, expires_at=now + ttl_seconds, subject_type=subject["type"],
         )
         return self.store.get_preview(plan_id, account_id=me["id"], now=now)
 
@@ -71,7 +71,7 @@ class ProgressPreview:
         now = int(self.clock())
         plan_id = self.store.create_many(
             account_id=me["id"], subject_id=subject_id, subject_name=subject["name"], items=items,
-            skipped=skipped, created_at=now, expires_at=now + ttl_seconds,
+            skipped=skipped, created_at=now, expires_at=now + ttl_seconds, subject_type=subject["type"],
         )
         return self.store.get_preview(plan_id, account_id=me["id"], now=now)
 
@@ -113,7 +113,8 @@ class ProgressPreview:
         now = int(self.clock())
         plan_id = self.store.create_many(
             account_id=me["id"], subject_id=subject_id, subject_name=subject["name"], items=items,
-            skipped=skipped, created_at=now, expires_at=now + ttl_seconds, after_type=target_state
+            skipped=skipped, created_at=now, expires_at=now + ttl_seconds, after_type=target_state,
+            subject_type=subject["type"],
         )
         return self.store.get_preview(plan_id, account_id=me["id"], now=now)  
 
@@ -126,8 +127,6 @@ class ProgressPreview:
     def _require_active_collection(subject, subject_id):
         if subject["subject_id"] != subject_id or subject["type"] not in (1, 2, 3, 4, 5):
             raise AccountReadError("目标条目没有有效收藏记录")
-        if subject["type"] == 5:
-            raise PlanError("目标条目已抛弃，请先更改为在看")
 
     def show(self, plan_id):
         return self.store.get_preview(

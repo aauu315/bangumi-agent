@@ -12,7 +12,7 @@ from .storage import PlanError, PlanStore
 
 
 EPISODE_STATES = {0: "未收藏", 1: "想看", 2: "看过", 3: "抛弃"}
-
+SUBJECT_STATES = {1: "想看", 2: "看过", 3: "在看", 4: "搁置", 5:"抛弃"}
 
 def _episode_list(sorts: list) -> str:
     return "第" + "、".join(str(sort) for sort in sorts) + "集"
@@ -20,7 +20,7 @@ def _episode_list(sorts: list) -> str:
 
 def approval_message(plan: dict[str, Any]) -> str:
     """What the user is asked to confirm; built from SQLite, never from model text."""
-    head = f"确认修改 Bangumi 收藏？\n条目：{plan['subject_name']}（{plan['subject_id']}）\n"
+    head = f"确认修改 Bangumi 收藏？\n条目：{plan['subject_name']}（{plan['subject_id']}）\n条目状态：{SUBJECT_STATES.get(plan.get('subject_type', 0), '未记录')}\n"
     if len(plan["items"]) == 1:
         return (head + f"章节：第{plan['episode_sort']}集 {plan['episode_name']}（{plan['episode_id']}）\n"
                 f"修改：{EPISODE_STATES[plan['before_type']]} → {EPISODE_STATES[plan['after_type']]}")

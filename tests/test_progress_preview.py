@@ -93,11 +93,10 @@ class PreviewTest(unittest.TestCase):
             self.create()
         self.assertFalse(self.path.exists())
 
-    def test_discarded_subject_rejected(self):
+    def test_dropped_subject_can_be_previewed(self):
         self.payloads[1]["type"] = 5
-        with self.assertRaisesRegex(PlanError, "目标条目已抛弃"):
-            self.create()
-        self.assertFalse(self.path.exists())
+        self.create()
+        self.assertTrue(self.path.exists())
 
     def test_invalid_arguments_do_not_read_account(self):
         with patch.object(self.client, "get_me") as get:

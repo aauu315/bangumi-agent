@@ -11,7 +11,7 @@ class PlanError(ValueError):
     pass
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 STATUSES = ("draft", "approved", "cancelled", "expired", "rejected",
             "executing", "verified", "failed", "unknown", "partial")
 # The only allowed moves; see LOG.md#s3-03 and LOG.md#s3-07 for the state diagram.
@@ -33,7 +33,8 @@ CREATE TABLE operation_plans_new (
     status TEXT NOT NULL CHECK(status IN ({", ".join(f"'{s}'" for s in STATUSES)})),
     updated_at INTEGER NOT NULL,
     detail TEXT NOT NULL DEFAULT '',
-    skipped TEXT NOT NULL DEFAULT '[]'
+    skipped TEXT NOT NULL DEFAULT '[]',
+    subject_type INTEGER CHECK(subject_type IS NULL OR subject_type IN (1, 2, 3, 4, 5))
 );
 """
 ITEMS_TABLE = f"""
@@ -82,10 +83,13 @@ COMMIT;
 # Version 0 is the S3-02 layout: status could only be 'draft', no updated_at or detail.
 # Version 1 is the S3-03 layout: one episode per plan, no 'partial' status.
 # Version 2 is the S3-07 layout: several episodes, but the target could only be watched.
+# Version 3 is the S3-08 layout: any target, but the subject's collection type was not saved.
+# Plans from before version 4 keep subject_type NULL: nobody recorded it at the time.
 MIGRATIONS = {
     0: _migration("created_at", "''", "'[]'", "NULL"),
     1: _migration("updated_at", "detail", "'[]'", "NULL"),
     2: _migration("updated_at", "detail", "skipped", "result"),
+    3: _migration("updated_at", "detail", "skipped", "result"),
 }
 
 
@@ -124,17 +128,17 @@ class PlanStore:
         return self._connect()
 
     def create(self, *, account_id, subject_id, episode_id, subject_name,
-               episode_name, episode_sort, before_type, created_at, expires_at) -> str:
+               episode_name, episode_sort, before_type, created_at, expires_at, subject_type=None) -> str:
         """Atomically save a draft and exactly one proposed episode change."""
         return self.create_many(
             account_id=account_id, subject_id=subject_id, subject_name=subject_name,
             items=[{"episode_id": episode_id, "episode_name": episode_name,
                     "episode_sort": episode_sort, "before_type": before_type}],
-            created_at=created_at, expires_at=expires_at,
+            created_at=created_at, expires_at=expires_at, subject_type=subject_type,
         )
 
     def create_many(self, *, account_id, subject_id, subject_name, items, created_at, expires_at,
-                    skipped=(), after_type=2) -> str:
+                    skipped=(), after_type=2, subject_type=None) -> str:
         """Atomically save a draft and every proposed change; skipped is only shown to the user."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         plan_id = uuid4().hex
@@ -142,9 +146,9 @@ class PlanStore:
             with connection:
                 connection.execute(
                     "INSERT INTO operation_plans (plan_id, account_id, created_at, expires_at, "
-                    "status, updated_at, skipped) VALUES (?, ?, ?, ?, 'draft', ?, ?)",
+                    "status, updated_at, skipped, subject_type) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?)",
                     (plan_id, account_id, created_at, expires_at, created_at,
-                     json.dumps(list(skipped), ensure_ascii=False)),
+                     json.dumps(list(skipped), ensure_ascii=False), subject_type),
                 )
                 connection.executemany(
                     "INSERT INTO plan_items (plan_id, subject_id, episode_id, subject_name, "
