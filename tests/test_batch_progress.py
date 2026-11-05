@@ -216,7 +216,7 @@ class PartialSuccessTest(BatchTestCase):
     only on the first request. self.results(plan_id) gives each episode's result by number.
     """
 
-    def test_first_miss(self):
+    def test_first_miss_is_retried_and_verified(self):
         writer = self.writer(first_try_misses=[9003])
         service = self.service(writer)
         plan_id = self.plan_up_to(5, service)
@@ -229,12 +229,12 @@ class PartialSuccessTest(BatchTestCase):
         plan_id = self.plan_up_to(5, service)
         plan = service.execute(plan_id)
         self.assertEqual(plan["status"], "partial")
-        self.assertEqual(self.results(plan_id)[3], "not_applied")
+        self.assertEqual(self.results(plan_id), {2: "applied", 3: "not_applied", 5: "applied"})
         self.assertEqual(writer.batches, [[9002, 9003, 9005], [9003]])
 
     def test_apply_but_drop_one(self):
         def apply_but_drop_one(episode_id):
-                self.site.states[episode_id] = DROPPED if episode_id == 9003 else WATCHED
+            self.site.states[episode_id] = DROPPED if episode_id == 9003 else WATCHED
         writer = SimulatedWriter(on_write=apply_but_drop_one)
         service = self.service(writer)
         plan_id = self.plan_up_to(5, service)
