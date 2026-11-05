@@ -246,12 +246,12 @@ def get_subject_relations(subject_id: int) -> dict:
 @mcp.tool()
 def get_my_collections(collection_type: int = 3, subject_type: int = 2, limit: int = 20,
                        offset: int = 0, include_comment: bool = False) -> dict:
-    """查询当前Token本人的收藏列表，用于“我在看什么”“我想看什么”“我看过哪些”。
+    """查询当前Token本人的收藏列表，用于“我在看什么”“我想看什么”“我看过哪些”。用户询问我看到第几集类似问题应使用“get_my_episode_states”
 
     collection_type：1想看、2看过、3在看（默认）、4搁置、5抛弃。
     subject_type：1书籍、2动画（默认）、3音乐、4游戏、6三次元。limit：1～50。offset：跳过的记录数。
     include_comment：是否同时返回短评、评分、标签和私密标记，默认否，用户问到时才打开。
-    返回total、complete、next_offset和data；data每项含subject_id、name、name_cn、ep_status（看到第几集）、
+    返回total、complete、next_offset和data；data每项含subject_id、name、name_cn、ep_status（一共看过的集数，会包括OP、ED等非正片，涉及到用户可能不按顺序看以及非正片标记的问题，所以本参数不能体现用户看到第几集）、
     vol_status、url。需要本机Token（不用用户在聊天里提供），只读，不修改收藏。
     """
     with _safe_tool_errors():
@@ -265,7 +265,7 @@ def get_my_episode_states(subject_id: int, limit: int = 40, offset: int = 0,
     """查询当前Token本人在某条目每一集的观看状态，用于“这部我看到第几集”“下一集是哪集”。
 
     type：0未收藏、1想看、2看过、3抛弃。条目必须已收藏，否则报错。
-    limit：1～50，默认40。offset：跳过的记录数。episode_type：0本篇（默认），None表示全部。
+    limit：1～50，默认40。offset：跳过的记录数。episode_type：0本篇（默认）、1特别篇、2 OP、3 ED、4预告宣传、5 MAD、6其他；None表示全部。
     include_summary：是否返回单集简介，默认否。
     返回total、complete、next_offset和data；data每项含episode_id、type、sort、ep、name、name_cn。
     需要本机Token（不用用户在聊天里提供），只读，不修改收藏；要标记看过用preview_episode_watched。
