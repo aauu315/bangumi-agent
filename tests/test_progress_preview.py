@@ -132,7 +132,7 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("DROP TABLE", plan["episode_name"])
         with self.store._connect() as connection:
             with self.assertRaises(sqlite3.IntegrityError):
-                connection.execute("INSERT INTO plan_items VALUES ('missing',1,2,'','','4',0,2)")
+                connection.execute("INSERT INTO plan_items VALUES ('missing',1,2,'','','4',0,2,NULL)")
         connection.close()
 
     def test_mcp_preview_uses_fake_credentials_and_temporary_store(self):

@@ -13,13 +13,14 @@ from bangumi_agent.account_client import AccountClient, AccountReadError
 from bangumi_agent.settings import Settings, MissingTokenError
 from bangumi_agent.storage import PlanStore, PlanError
 from bangumi_agent.progress import ProgressPreview
-from bangumi_agent.confirmation import EPISODE_STATES, ExecutionService
+from bangumi_agent.confirmation import ExecutionService, approval_message
 from bangumi_agent.episode_writer import BangumiEpisodeWriter
 
 STATUS_TEXT = {
     "draft": "草稿，未批准", "approved": "已批准，尚未执行", "cancelled": "已取消",
     "expired": "已过期", "rejected": "执行前检查未通过，已拒绝", "executing": "执行中或执行被中断",
     "verified": "已执行并读回核实", "failed": "未生效", "unknown": "结果未知，需要只读核对",
+    "partial": "部分完成，逐集结果见下",
 }
 
 
@@ -35,6 +36,10 @@ def main():
     create.add_argument("--subject-id", type=int, required=True)
     create.add_argument("--episode-id", type=int, required=True)
     create.add_argument("--ttl-seconds", type=int, default=900)
+    up_to = commands.add_parser("create-up-to", help="创建“看到这一集”的草稿：第1集到这一集的本篇，跳过已看过和已抛弃")
+    up_to.add_argument("--subject-id", type=int, required=True)
+    up_to.add_argument("--episode-id", type=int, required=True)
+    up_to.add_argument("--ttl-seconds", type=int, default=900)
     show = commands.add_parser("show", help="验证当前账号并查看未过期草稿快照")
     show.add_argument("plan_id")
     for name, text in (("status", "查看任意状态的计划"), ("approve", "批准草稿（只记录在本地，不修改网站）"),
@@ -60,6 +65,7 @@ def main():
         confirm = ExecutionService(client, store, writer)
         plan = {
             "create": lambda: preview.create(args.subject_id, args.episode_id, args.ttl_seconds),
+            "create-up-to": lambda: preview.create_up_to(args.subject_id, args.episode_id, args.ttl_seconds),
             "show": lambda: preview.show(args.plan_id),
             "status": lambda: confirm.store.get_plan(args.plan_id, account_id=client.get_me()["id"]),
             "approve": lambda: confirm.approve(args.plan_id),
@@ -68,15 +74,16 @@ def main():
             "check": lambda: confirm.check(args.plan_id),
         }[args.command]()
         print(f"计划ID：{plan['plan_id']}\n账号ID：{plan['account_id']}")
-        print(f"条目：{plan['subject_name']}（{plan['subject_id']}）")
-        print(f"章节：第{plan['episode_sort']}集 {plan['episode_name']}（{plan['episode_id']}）")
-        print(f"拟修改：{EPISODE_STATES[plan['before_type']]} → {EPISODE_STATES[plan['after_type']]}")
+        print(approval_message(plan).split("？", 1)[1].strip())
+        for item in plan["items"]:
+            if item["result"]:
+                print(f"第{item['episode_sort']}集 {item['episode_name']}：{item['result']}")
         print(f"状态：{plan['status']}（{STATUS_TEXT[plan['status']]}）；过期时间：{datetime.fromtimestamp(plan['expires_at']).astimezone().isoformat(timespec='seconds')}")
         print(f"本地数据库：{args.db.resolve()}")
         if plan.get("detail"):
             print(f"说明：{plan['detail']}")
         if args.command == "execute":
-            print("本命令向Bangumi发送了1次章节修改请求，结果见上方状态。")
+            print("本命令向Bangumi发送了章节修改请求（部分未生效时会重试一次），结果见上方状态。")
         else:
             print("以上修改前状态是创建时的快照；本命令没有修改Bangumi收藏。")
         return 0

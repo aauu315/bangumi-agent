@@ -55,6 +55,10 @@ class FakeSite:
             raise AccountReadError("模拟：读回超时")
         return {"episode_id": episode_id, "subject_id": 100, "type": self.state, "sort": 4, "name": "小雪"}
 
+    def get_all_my_episode_states(self, subject_id: int, limit: int = 40, max_pages: int = 5,
+                                  episode_type: int | None = None) -> dict[str, Any]:
+        raise AssertionError("single-episode plans read one episode at a time")
+
     def apply_write(self, episode_id: int) -> None:
         self.state = 2
 

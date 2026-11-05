@@ -1,8 +1,9 @@
-"""The only Bangumi write in this project: mark one episode as watched.
+"""The only Bangumi writes in this project: mark episodes as watched.
 
 Called by ExecutionService.execute after the plan is approved and re-checked; never call it
-directly. Endpoint checked against the official v0 spec on 2026-11-03:
+directly. Endpoints checked against the official v0 spec (one episode 2026-11-03, batch 2026-11-05):
 PUT /v0/users/-/collections/-/episodes/{episode_id}, body {"type": 2}, success 204.
+PATCH /v0/users/-/collections/{subject_id}/episodes, body {"episode_id": [...], "type": 2}, success 204.
 """
 import json
 from urllib.error import HTTPError, URLError
@@ -23,9 +24,20 @@ class BangumiEpisodeWriter:
     def mark_episode_watched(self, subject_id: int, episode_id: int) -> None:
         _positive(subject_id, "subject_id")
         _positive(episode_id, "episode_id")
+        self._send("PUT", f"/v0/users/-/collections/-/episodes/{episode_id}", {"type": WATCHED})
+
+    def mark_episodes_watched(self, subject_id: int, episode_ids: list[int]) -> None:
+        _positive(subject_id, "subject_id")
+        if not episode_ids:
+            raise ValueError("episode_ids不能为空")
+        for episode_id in episode_ids:
+            _positive(episode_id, "episode_id")
+        self._send("PATCH", f"/v0/users/-/collections/{subject_id}/episodes",
+                   {"episode_id": episode_ids, "type": WATCHED})
+
+    def _send(self, method: str, path: str, body: dict) -> None:
         request = Request(
-            f"{BASE_URL}/v0/users/-/collections/-/episodes/{episode_id}",
-            data=json.dumps({"type": WATCHED}).encode(), method="PUT",
+            BASE_URL + path, data=json.dumps(body).encode(), method=method,
             headers={"Authorization": "Bearer " + self.__token, "User-Agent": USER_AGENT,
                      "Content-Type": "application/json", "Accept": "application/json"},
         )

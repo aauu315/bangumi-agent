@@ -1,4 +1,5 @@
 """Local SQLite plans and their status history. No credentials or HTTP requests belong here."""
+import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -10,58 +11,76 @@ class PlanError(ValueError):
     pass
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 STATUSES = ("draft", "approved", "cancelled", "expired", "rejected",
-            "executing", "verified", "failed", "unknown")
-# The only allowed moves; see LOG.md#s3-03 for the state diagram.
+            "executing", "verified", "failed", "unknown", "partial")
+# The only allowed moves; see LOG.md#s3-03 and LOG.md#s3-07 for the state diagram.
 TRANSITIONS = {
     "draft": {"approved", "cancelled", "expired"},
     "approved": {"cancelled", "expired", "rejected", "executing"},
-    "executing": {"verified", "failed", "unknown"},
-    "unknown": {"verified", "failed"},
+    "executing": {"verified", "failed", "unknown", "partial"},
+    "unknown": {"verified", "failed", "partial"},
 }
+# What a read-back found for one episode of an executed plan.
+ITEM_RESULTS = ("applied", "not_applied", "changed_elsewhere")
 
 PLANS_TABLE = f"""
-CREATE TABLE operation_plans (
+CREATE TABLE operation_plans_new (
     plan_id TEXT PRIMARY KEY,
     account_id INTEGER NOT NULL CHECK(account_id > 0),
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL CHECK(expires_at > created_at),
     status TEXT NOT NULL CHECK(status IN ({", ".join(f"'{s}'" for s in STATUSES)})),
     updated_at INTEGER NOT NULL,
-    detail TEXT NOT NULL DEFAULT ''
+    detail TEXT NOT NULL DEFAULT '',
+    skipped TEXT NOT NULL DEFAULT '[]'
 );
 """
-ITEMS_TABLE = """
-CREATE TABLE plan_items (
-    plan_id TEXT PRIMARY KEY REFERENCES operation_plans(plan_id),
+ITEMS_TABLE = f"""
+CREATE TABLE plan_items_new (
+    plan_id TEXT NOT NULL REFERENCES operation_plans(plan_id),
     subject_id INTEGER NOT NULL CHECK(subject_id > 0),
     episode_id INTEGER NOT NULL CHECK(episode_id > 0),
     subject_name TEXT NOT NULL,
     episode_name TEXT NOT NULL,
     episode_sort TEXT NOT NULL,
     before_type INTEGER NOT NULL CHECK(before_type IN (0, 1, 3)),
-    after_type INTEGER NOT NULL CHECK(after_type = 2)
+    after_type INTEGER NOT NULL CHECK(after_type = 2),
+    result TEXT CHECK(result IS NULL OR result IN ({", ".join(f"'{r}'" for r in ITEM_RESULTS)})),
+    PRIMARY KEY (plan_id, episode_id)
 );
 """
-# Version 0 is the S3-02 layout: status could only be 'draft'. SQLite cannot ALTER a
-# CHECK, so copy into a new table and rename it, keeping every existing draft.
-MIGRATE_0_TO_1 = f"""
+RENAME_NEW_TABLES = """
+ALTER TABLE operation_plans_new RENAME TO operation_plans;
+ALTER TABLE plan_items_new RENAME TO plan_items;
+"""
+CREATE_CURRENT = (f"BEGIN;{PLANS_TABLE}{ITEMS_TABLE}{RENAME_NEW_TABLES}"
+                  f"PRAGMA user_version = {SCHEMA_VERSION};COMMIT;")
+
+
+def _migration(updated_at: str, detail: str) -> str:
+    """SQLite cannot ALTER a CHECK or a primary key, so copy into new tables, keeping every plan."""
+    return f"""
 BEGIN;
-{PLANS_TABLE.replace("CREATE TABLE operation_plans", "CREATE TABLE operation_plans_v1")}
-INSERT INTO operation_plans_v1 (plan_id, account_id, created_at, expires_at, status, updated_at)
-    SELECT plan_id, account_id, created_at, expires_at, status, created_at FROM operation_plans;
+{PLANS_TABLE}
+INSERT INTO operation_plans_new (plan_id, account_id, created_at, expires_at, status, updated_at, detail)
+    SELECT plan_id, account_id, created_at, expires_at, status, {updated_at}, {detail} FROM operation_plans;
+{ITEMS_TABLE}
+INSERT INTO plan_items_new (plan_id, subject_id, episode_id, subject_name, episode_name,
+                            episode_sort, before_type, after_type)
+    SELECT plan_id, subject_id, episode_id, subject_name, episode_name,
+           episode_sort, before_type, after_type FROM plan_items;
+DROP TABLE plan_items;
 DROP TABLE operation_plans;
-ALTER TABLE operation_plans_v1 RENAME TO operation_plans;
-PRAGMA user_version = 1;
+{RENAME_NEW_TABLES}
+PRAGMA user_version = {SCHEMA_VERSION};
 COMMIT;
 """
 
-PLAN_QUERY = (
-    "SELECT p.*, i.subject_id, i.episode_id, i.subject_name, i.episode_name, "
-    "i.episode_sort, i.before_type, i.after_type "
-    "FROM operation_plans p JOIN plan_items i USING(plan_id) WHERE p.plan_id = ?"
-)
+
+# Version 0 is the S3-02 layout: status could only be 'draft', no updated_at or detail.
+# Version 1 is the S3-03 layout: one episode per plan, no 'partial' status.
+MIGRATIONS = {0: _migration("created_at", "''"), 1: _migration("updated_at", "detail")}
 
 
 class PlanStore:
@@ -85,15 +104,13 @@ class PlanStore:
         exists = connection.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'operation_plans'"
         ).fetchone()
-        if exists:
-            # Foreign keys stay off while the parent table is swapped.
-            connection.executescript(MIGRATE_0_TO_1)
-            if connection.execute("PRAGMA foreign_key_check").fetchall():
-                raise PlanError("数据库迁移后外键检查失败")
-        else:
-            connection.executescript(
-                f"BEGIN;{PLANS_TABLE}{ITEMS_TABLE}PRAGMA user_version = {SCHEMA_VERSION};COMMIT;"
-            )
+        if not exists:
+            connection.executescript(CREATE_CURRENT)
+            return
+        # Foreign keys stay off while the tables are swapped.
+        connection.executescript(MIGRATIONS[version])
+        if connection.execute("PRAGMA foreign_key_check").fetchall():
+            raise PlanError("数据库迁移后外键检查失败")
 
     def _open_existing(self) -> sqlite3.Connection:
         if not self.path.is_file():
@@ -103,31 +120,53 @@ class PlanStore:
     def create(self, *, account_id, subject_id, episode_id, subject_name,
                episode_name, episode_sort, before_type, created_at, expires_at) -> str:
         """Atomically save a draft and exactly one proposed episode change."""
+        return self.create_many(
+            account_id=account_id, subject_id=subject_id, subject_name=subject_name,
+            items=[{"episode_id": episode_id, "episode_name": episode_name,
+                    "episode_sort": episode_sort, "before_type": before_type}],
+            created_at=created_at, expires_at=expires_at,
+        )
+
+    def create_many(self, *, account_id, subject_id, subject_name, items, created_at, expires_at,
+                    skipped=()) -> str:
+        """Atomically save a draft and every proposed change; skipped is only shown to the user."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         plan_id = uuid4().hex
         with closing(self._connect()) as connection:
             with connection:
                 connection.execute(
                     "INSERT INTO operation_plans (plan_id, account_id, created_at, expires_at, "
-                    "status, updated_at) VALUES (?, ?, ?, ?, 'draft', ?)",
-                    (plan_id, account_id, created_at, expires_at, created_at),
+                    "status, updated_at, skipped) VALUES (?, ?, ?, ?, 'draft', ?, ?)",
+                    (plan_id, account_id, created_at, expires_at, created_at,
+                     json.dumps(list(skipped), ensure_ascii=False)),
                 )
-                connection.execute(
-                    "INSERT INTO plan_items VALUES (?, ?, ?, ?, ?, ?, ?, 2)",
-                    (plan_id, subject_id, episode_id, subject_name, episode_name,
-                     str(episode_sort), before_type),
+                connection.executemany(
+                    "INSERT INTO plan_items (plan_id, subject_id, episode_id, subject_name, "
+                    "episode_name, episode_sort, before_type, after_type) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 2)",
+                    [(plan_id, subject_id, item["episode_id"], subject_name, item["episode_name"],
+                      str(item["episode_sort"]), item["before_type"]) for item in items],
                 )
         return plan_id
 
     def get_plan(self, plan_id, *, account_id) -> dict[str, Any]:
-        """Any status, but only for the account that owns the plan."""
+        """Any status, but only for the account that owns the plan.
+
+        items holds every episode. Top-level episode fields repeat the first item, which is
+        all a single-episode plan has.
+        """
         with closing(self._open_existing()) as connection:
-            row = connection.execute(PLAN_QUERY, (plan_id,)).fetchone()
-        if row is None:
+            row = connection.execute("SELECT * FROM operation_plans WHERE plan_id = ?", (plan_id,)).fetchone()
+            rows = connection.execute(
+                "SELECT subject_id, subject_name, episode_id, episode_name, episode_sort, before_type, "
+                "after_type, result FROM plan_items WHERE plan_id = ? ORDER BY rowid", (plan_id,),
+            ).fetchall()
+        if row is None or not rows:
             raise PlanError("找不到该计划")
         if type(account_id) is not int or row["account_id"] != account_id:
             raise PlanError("计划不属于当前凭据对应的账号")
-        return dict(row)
+        return {**dict(rows[0]), **dict(row), "skipped": json.loads(row["skipped"]),
+                "items": [dict(item) for item in rows]}
 
     def get_preview(self, plan_id, *, account_id, now) -> dict[str, Any]:
         """Validate the owner and expiry of a persisted snapshot, not live state."""
@@ -138,7 +177,8 @@ class PlanStore:
             raise PlanError("该记录不是可预览的草稿")
         return plan
 
-    def transition(self, plan_id, *, account_id, from_status, to_status, now, detail="") -> bool:
+    def transition(self, plan_id, *, account_id, from_status, to_status, now, detail="",
+                   item_results=None) -> bool:
         """Move one plan only if it is still in from_status.
 
         The WHERE clause makes this a compare-and-set: when two callers race, exactly one
@@ -153,4 +193,9 @@ class PlanStore:
                     "WHERE plan_id = ? AND account_id = ? AND status = ?",
                     (to_status, now, detail, plan_id, account_id, from_status),
                 )
+                if cursor.rowcount == 1 and item_results:
+                    connection.executemany(
+                        "UPDATE plan_items SET result = ? WHERE plan_id = ? AND episode_id = ?",
+                        [(result, plan_id, episode_id) for episode_id, result in item_results.items()],
+                    )
         return cursor.rowcount == 1

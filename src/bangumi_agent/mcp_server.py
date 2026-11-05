@@ -88,6 +88,32 @@ def preview_episode_watched(
         raise ToolError("预览失败；已隐藏原始异常，请运行离线测试检查") from None
 
 
+@mcp.tool()
+def preview_watched_up_to(
+    subject_id: SubjectId,
+    episode_id: Annotated[int, Field(description="用户看到的那一集的章节ID，来自get_episodes；不是第几集", gt=0)],
+) -> dict:
+    """创建“看到第N集”的本地草稿，用于“我看到第8集了”“这部前8集都看了”。只标记单独一集用preview_episode_watched。
+
+    程序按网站“看到”的规则选集：只算本篇；第1集到这一集中未收藏和想看的改成看过；已看过、已抛弃的跳过并列出。
+    确定是哪一集：一般按本季序号（ep）；数字明显超出本季时按总序号（sort）；不确定就问用户。
+    多季作品优先选用户标记为在看的那一季，第一季已看过时用户说的通常是后面一季。
+    返回items（要改的集和修改前状态）、skipped（跳过的集）。默认使用本机Token。
+    本工具不会批准或执行修改，只写本地SQLite；执行用execute_episode_plan。
+    """
+    from pathlib import Path
+    from .account_client import AccountClient
+    from .progress import ProgressPreview
+    from .settings import Settings
+    from .storage import PlanStore
+
+    root = Path(__file__).resolve().parents[2]
+    with _safe_tool_errors():
+        client = AccountClient(Settings.from_token_file(root / ".secrets/bangumi-token.txt"))
+        plan = ProgressPreview(client, PlanStore(root / "state/progress.sqlite3")).create_up_to(subject_id, episode_id)
+        return {**plan, "remote_write_performed": False, "snapshot_only": True}
+
+
 NO_POPUP = "当前客户端无法弹窗确认，未修改Bangumi；可在本机用 progress_preview.py approve 和 execute 完成"
 
 
@@ -153,13 +179,15 @@ def execute_episode_plan(
     plan_id: Annotated[str, Field(description="计划ID，来自preview_episode_watched")],
     answer: Annotated[ElicitationResult[EpisodeApproval], Resolve(_ask_user)],
 ) -> dict:
-    """请用户确认并执行一份已创建的预览计划，把该章节标记为看过。
+    """请用户确认并执行一份已创建的预览计划，把其中的章节标记为看过。
 
     本工具会让客户端直接向用户弹窗显示具体修改，
     只有用户本人点击确认才会写入Bangumi；不能代替用户确认，转述用户的同意也不算确认。
     未确认或客户端不支持弹窗时不写入。popup_result为decline或cancel时，也可能是客户端
     没有显示弹窗就自动回答，不要说成用户拒绝，请询问用户是否看到了弹窗。写入后读回核对，
-    返回status：verified已核实；failed未生效；unknown结果未知，不要重试，请用户在本机运行check核对。
+    返回status：verified已核实；failed未生效；unknown结果未知，不要重试，请用户在本机运行check核对；
+    partial部分完成，items中每集的result为applied已改、not_applied没改成、changed_elsewhere被其他操作改动
+    （不要覆盖），把具体集数告诉用户；用户要补上时重新创建预览。
     """
     if not (isinstance(answer, AcceptedElicitation) and answer.data.confirm):
         return {"plan_id": plan_id, "popup_result": answer.action, "write_attempted": False}

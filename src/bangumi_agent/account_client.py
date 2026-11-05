@@ -224,7 +224,7 @@ class AccountClient:
 
         return self._page(data, limit, offset, convert)
 
-    def get_all_my_episode_states(self, subject_id, limit=40, max_pages=5):
+    def get_all_my_episode_states(self, subject_id, limit=40, max_pages=5, episode_type=None) -> dict[str, Any]:
         _positive(subject_id, "subject_id")
         _pagination(limit, 0)
         if type(max_pages) is not int or not 1 <= max_pages <= 20:
@@ -232,7 +232,7 @@ class AccountClient:
         rows, offset, total = [], 0, None
         for _ in range(max_pages):
             try:
-                page = self.get_my_episode_states(subject_id, limit, offset)
+                page = self.get_my_episode_states(subject_id, limit, offset, episode_type)
             except AccountReadError as exc:
                 if not rows:
                     raise
