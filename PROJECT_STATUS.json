@@ -15,7 +15,7 @@
   "next_task": "S4-01",
   "next_action": "开始 S4-01（学习卡）：先读 PLAN 卡片，说明目标和分工；助手先写失败测试，用户写工具循环。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-05 取消对抛弃条目的拒绝，弹窗显示条目状态；107 项离线测试通过，真实写入抛弃条目未做。",
+  "last_update_summary": "2026-11-05 取消对抛弃条目的拒绝，弹窗显示条目状态；107 项离线测试通过，真实批量写入抛弃条目已验证，读回和网页一致。",
   "next_session": {
     "goal": "S4-01 独立模型适配和最小工具循环（学习卡）",
     "timebox": "见 PLAN S4-01 卡",
