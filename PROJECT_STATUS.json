@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-07",
+  "updated_at": "2026-11-05",
   "project_root": "E:\\myproject\\bangumi-agent",
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
@@ -15,7 +15,7 @@
   "next_task": "S3-08",
   "next_action": "S3-08：用户确认网页上这一集已变回未收藏，之后验收。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-07 S3-08：真实撤销读回 verified；网页结果待用户确认。",
+  "last_update_summary": "2026-11-05 S3-08：真实撤销读回 verified；网页结果待用户确认。",
   "next_session": {
     "goal": "S3-08 通用进度修改工具（学习卡）",
     "timebox": "学习 0.5h，用户写代码 1–2h，助手工程部分 1–2h",
