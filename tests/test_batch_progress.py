@@ -101,6 +101,16 @@ class SelectionRuleTest(BatchTestCase):
         self.assertEqual([(row["episode_sort"], row["reason"]) for row in plan["skipped"]],
                          [(1, "已看过"), (4, "已抛弃")])
 
+    def test_selection_follows_sort_not_episode_id(self):
+        # Real data: Cowboy Bebop jumps from ID 519 to 7027 between episodes 1 and 2, and a
+        # second season's sort carries on from the first. IDs are labels, never positions.
+        rows = [{"episode_id": episode_id, "type": UNSEEN, "sort": sort, "name": "集", "name_cn": None}
+                for episode_id, sort in ((7027, 27), (519, 26), (530, 28))]
+        pages = {"data": rows, "total": 3, "complete": True}
+        with patch.object(self.site, "get_all_my_episode_states", return_value=pages):
+            plan = self.preview().create_up_to(100, 7027)
+        self.assertEqual({item["episode_id"] for item in plan["items"]}, {519, 7027})
+
     def test_only_main_episodes_are_read(self):
         with patch.object(self.site, "get_all_my_episode_states", wraps=self.site.get_all_my_episode_states) as read:
             self.preview().create_up_to(100, 9005)
