@@ -83,5 +83,5 @@ PLAN 说明依赖、门槛和技术边界；历史技术参考在 work/history �
 
 ## 状态含义
 planned=尚未到此步骤；ready=前置已满足；active=正在做；verify=实现存在但验收不全；blocked=缺明确资源/决定/授权；done=该卡验收证据齐全。
-learning值独立：not_checked、can_explain、can_modify、not_applicable。
+learning值独立：not_checked、can_explain、can_modify、not_applicable。练习只覆盖一部分时，在任务的 learning_scope 字段写明范围。
 AI不能替用户填写can_explain/can_modify；需真实回答/练习证据。纯文档整理可not_applicable。

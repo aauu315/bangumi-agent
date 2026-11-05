@@ -1065,7 +1065,25 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 | 写入器括号里的写法为何生效、类里能写函数吗、为什么每次造 writer/service/plan_id | **kwargs 转交；函数可写在方法内；这些是内存对象，只有 writer 每条测试不同 |
 | 返回的 plan 是什么，重试何时发生，怎么查 plan 内容，怎样只跑一个测试 | 数据库里的计划字典；在 execute 内部；用 print；`-k` |
 
+### 2026-11-06 · S3 各卡 learning 的范围说明
+
+用户要求补充（维护对话）。标签不变，范围如下，以后写了对应业务代码再更新。同样内容记在 STATUS 的 learning_scope。
+
+| 卡 | 标签 | 亲手完成的范围 |
+|---|---|---|
+| S3-01 | can_modify | `_http_error` 的 5xx 分支及测试 |
+| S3-02 | can_modify | 抛弃条目拒绝规则及测试，SQL 练习 |
+| S3-R | can_modify | 上面两处及 SQL 练习，未写完整函数 |
+| S3-03 | can_modify | 状态机与故障场景设计，unknown 测试 |
+| S3-05 | can_modify | 工具选择与接口设计，改工具说明 |
+| S3-06 | can_modify | 两条测试，信任边界讲解 |
+| S3-07 | can_modify | 选集规则与部分成功判定设计，三条测试 |
+
 ## 开发流水
+
+## 2026-11-06 · 新增练习卡 S3-08 与 learning 范围说明
+
+- 用户决定先做通用进度修改工具再进 S4。PLAN 新增 S3-08（学习卡，用户写 `create_change`），一个工具同时支持单集和批量；STATUS 下一步改为 S3-08。S3 各卡 can_modify 补充范围说明，AGENTS.md 增加 learning_scope。
 
 ## 2026-11-06 · 调整学习卡分工与交接清单
 

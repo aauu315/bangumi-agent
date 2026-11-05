@@ -11,18 +11,22 @@
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S3",
-  "current_task": "S4-01",
-  "next_task": "S4-01",
-  "next_action": "开始 S4-01：先读 PLAN 卡片，说明目标、卡片类型和分工。",
+  "current_task": "S3-08",
+  "next_task": "S3-08",
+  "next_action": "开始 S3-08（学习卡）：先讲清要写的函数和 create_up_to 的写法，请用户决定卡片列出的规则；助手写失败测试，用户写 create_change，通过后助手补工程部分并给交接清单。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-06 S3-07 完成：批量“看到”真实写入，读回和网页一致；S3 各卡完成，下一步 S4-01。",
+  "last_update_summary": "2026-11-06 新增练习卡 S3-08 并设为下一步；S3 各卡的 can_modify 补充 learning_scope 范围说明。",
   "next_session": {
-    "goal": "S4-01（见 PLAN）",
-    "timebox": "见 PLAN S4-01 卡",
+    "goal": "S3-08 通用进度修改工具（学习卡）",
+    "timebox": "学习 0.5h，用户写代码 1–2h，助手工程部分 1–2h",
     "steps": [
-      "读卡片并确认分工"
+      "讲解 create_change 的输入输出、可用的辅助函数和 create_up_to 的写法",
+      "用户决定规则：ID 不属于作品、已是目标状态、作品已抛弃、数量上限",
+      "助手写失败测试，用户写 create_change 到测试通过并做变异检查",
+      "助手补迁移、写入器、MCP 工具和其余测试，给交接清单",
+      "用户确认具体预览后做一次真实撤销，读回和网页核对"
     ],
-    "stop_when": "按 PLAN S4-01 通过标准。"
+    "stop_when": "通过标准全部满足；真实写入需要用户对具体预览确认。"
   },
   "known_blockers": [],
   "future_requirements": [
@@ -121,7 +125,8 @@
         "docs/LOG.md#s3-01"
       ],
       "learning": "can_modify",
-      "blocker": null
+      "blocker": null,
+      "learning_scope": "业务代码只写过 _http_error 的 5xx 分支及测试（S3-R）；其余由助手编写，用户能讲解。"
     },
     {
       "id": "S3-02",
@@ -130,7 +135,8 @@
         "docs/LOG.md#s3-02"
       ],
       "learning": "can_modify",
-      "blocker": null
+      "blocker": null,
+      "learning_scope": "业务代码只写过抛弃条目拒绝规则及测试，另有 SQL 练习（S3-R）；其余由助手编写，用户能讲解。"
     },
     {
       "id": "S3-R",
@@ -139,7 +145,8 @@
         "docs/LOG.md#s3-r"
       ],
       "learning": "can_modify",
-      "blocker": null
+      "blocker": null,
+      "learning_scope": "一处错误分支、一条拒绝规则及其测试，加 SQL 练习；未写完整函数。"
     },
     {
       "id": "S3-03",
@@ -148,7 +155,8 @@
         "docs/LOG.md#s3-03"
       ],
       "learning": "can_modify",
-      "blocker": null
+      "blocker": null,
+      "learning_scope": "状态机与故障场景设计、unknown 测试；业务代码由助手编写。"
     },
     {
       "id": "S3-04",
@@ -166,7 +174,8 @@
         "docs/LOG.md#s3-05"
       ],
       "learning": "can_modify",
-      "blocker": null
+      "blocker": null,
+      "learning_scope": "工具选择与接口设计、改工具说明；函数实现由助手编写。"
     },
     {
       "id": "S3-06",
@@ -175,7 +184,8 @@
         "docs/LOG.md#s3-06"
       ],
       "learning": "can_modify",
-      "blocker": null
+      "blocker": null,
+      "learning_scope": "两条测试和信任边界讲解；业务代码由助手编写。"
     },
     {
       "id": "S3-07",
@@ -184,6 +194,14 @@
         "docs/LOG.md#s3-07"
       ],
       "learning": "can_modify",
+      "blocker": null,
+      "learning_scope": "选集规则与部分成功判定的设计、三条测试；业务代码由助手编写。"
+    },
+    {
+      "id": "S3-08",
+      "status": "ready",
+      "evidence": [],
+      "learning": "not_checked",
       "blocker": null
     },
     {
