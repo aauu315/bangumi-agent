@@ -11,22 +11,21 @@
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S3",
-  "current_task": "S3-08",
-  "next_task": "S3-08",
-  "next_action": "S3-08：用户确认网页上这一集已变回未收藏，之后验收。",
+  "current_task": "S4-01",
+  "next_task": "S4-01",
+  "next_action": "开始 S4-01（学习卡）：先读 PLAN 卡片，说明目标和分工；助手先写失败测试，用户写工具循环。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-05 S3-08：真实撤销读回 verified；网页结果待用户确认。",
+  "last_update_summary": "2026-11-05 S3-08 完成：用户写 create_change，真实撤销读回和网页一致。下一步 S4-01。",
   "next_session": {
-    "goal": "S3-08 通用进度修改工具（学习卡）",
-    "timebox": "学习 0.5h，用户写代码 1–2h，助手工程部分 1–2h",
+    "goal": "S4-01 独立模型适配和最小工具循环（学习卡）",
+    "timebox": "见 PLAN S4-01 卡",
     "steps": [
-      "讲解 create_change 的输入输出、可用的辅助函数和 create_up_to 的写法",
-      "用户决定规则：ID 不属于作品、已是目标状态、作品已抛弃、数量上限",
-      "助手写失败测试，用户写 create_change 到测试通过并做变异检查",
-      "助手补迁移、写入器、MCP 工具和其余测试，给交接清单",
-      "用户确认具体预览后做一次真实撤销，读回和网页核对"
+      "读卡片并确认分工",
+      "助手写失败测试，用户写工具循环",
+      "助手补 provider 适配和工具注册",
+      "经用户确认做一次真实只读调用"
     ],
-    "stop_when": "通过标准全部满足；真实写入需要用户对具体预览确认。"
+    "stop_when": "按 PLAN S4-01 通过标准。"
   },
   "known_blockers": [],
   "future_requirements": [
@@ -199,12 +198,13 @@
     },
     {
       "id": "S3-08",
-      "status": "verify",
+      "status": "done",
       "evidence": [
         "docs/LOG.md#s3-08"
       ],
-      "learning": "not_checked",
-      "blocker": null
+      "learning": "can_modify",
+      "blocker": null,
+      "learning_scope": "亲手写 ProgressPreview.create_change（校验、读状态、分出要改和要跳过的集、保存草稿）并改规则；迁移、写入器和 MCP 工具由助手写。"
     },
     {
       "id": "S4-01",
