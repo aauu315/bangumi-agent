@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-05",
+  "updated_at": "2026-11-06",
   "project_root": "E:\\myproject\\bangumi-agent",
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
@@ -13,9 +13,9 @@
   "current_stage": "S3",
   "current_task": "S3-07",
   "next_task": "S3-07",
-  "next_action": "S3-07：用户在 tests/test_batch_progress.py 的 PartialSuccessTest 写部分成功测试并做变异检查；然后对一部确实看到那里的作品做一次真实“看到”，读回和网页核对。",
+  "next_action": "S3-07：用户对一部确实看到那里的作品经弹窗做一次真实“看到”，读回和网页核对；再说明部分成功的判定理由和之后怎么处理。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节查询（api_client.py）；本人身份、收藏、章节状态只读查询（account_client.py）；单集“标为看过”的预览→人工确认→执行→读回（progress.py、storage.py、confirmation.py、episode_writer.py），可用命令行批准或 MCP 客户端弹窗确认；4 个 MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）。55 项离线测试通过，pyright（basic）0 报错。未实现：更多只读工具（S3-05）、看到第 N 集（S3-07）、完整 Agent、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-05 S3-07：工程部分完成，新增 preview_watched_up_to 和 partial 状态，81 项测试通过；用户测试和真实写入待做。",
+  "last_update_summary": "2026-11-06 S3-07：用户写完部分成功三条测试，变异检查有效，87 项通过；真实 PATCH 未测。",
   "next_session": {
     "goal": "S3-07 “看到第 N 集”与其他进度操作（学习卡）",
     "timebox": "见 PLAN S3-07 卡",

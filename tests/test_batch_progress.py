@@ -216,6 +216,32 @@ class PartialSuccessTest(BatchTestCase):
     only on the first request. self.results(plan_id) gives each episode's result by number.
     """
 
+    def test_first_miss(self):
+        writer = self.writer(first_try_misses=[9003])
+        service = self.service(writer)
+        plan_id = self.plan_up_to(5, service)
+        self.assertEqual(service.execute(plan_id)["status"], "verified")
+        self.assertEqual(writer.batches, [[9002, 9003, 9005], [9003]]) 
+
+    def test_never_applies(self):
+        writer = self.writer(never_applies=[9003])
+        service = self.service(writer)
+        plan_id = self.plan_up_to(5, service)
+        plan = service.execute(plan_id)
+        self.assertEqual(plan["status"], "partial")
+        self.assertEqual(self.results(plan_id)[3], "not_applied")
+        self.assertEqual(writer.batches, [[9002, 9003, 9005], [9003]])
+
+    def test_apply_but_drop_one(self):
+        def apply_but_drop_one(episode_id):
+                self.site.states[episode_id] = DROPPED if episode_id == 9003 else WATCHED
+        writer = SimulatedWriter(on_write=apply_but_drop_one)
+        service = self.service(writer)
+        plan_id = self.plan_up_to(5, service)
+        plan = service.execute(plan_id)
+        self.assertEqual(plan["status"], "partial")
+        self.assertEqual(self.results(plan_id)[3], "changed_elsewhere")
+        self.assertEqual(writer.batches, [[9002, 9003, 9005]])
 
 class MigrationTest(unittest.TestCase):
     def test_version_1_plan_survives_and_new_tables_allow_several_episodes(self):
