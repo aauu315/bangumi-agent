@@ -324,6 +324,20 @@
       "evidence": [],
       "learning": "not_checked",
       "blocker": null
+    },
+    {
+      "id": "S8-02",
+      "status": "planned",
+      "evidence": [],
+      "learning": "not_checked",
+      "blocker": null
+    },
+    {
+      "id": "S8-03",
+      "status": "planned",
+      "evidence": [],
+      "learning": "not_checked",
+      "blocker": null
     }
   ]
 }
