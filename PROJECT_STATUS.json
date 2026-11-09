@@ -10,21 +10,22 @@
     "日志、小组等核心业务尚无实现卡，先由 S8-01 调查并产出覆盖矩阵，再拆卡。",
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
-  "current_stage": "S3",
-  "current_task": "S4-01",
-  "next_task": "S4-01",
-  "next_action": "S4-01 剩“你要能做到”的两项口头检查：沿一次调用说出 messages 的变化；比较自己的循环和 SDK（如 Anthropic Tool Runner）的职责。答完记 LOG 后再判 done。",
+  "current_stage": "S4",
+  "current_task": "S4-02",
+  "next_task": "S4-02",
+  "next_action": "开始 S4-02（学习卡）：先读 PLAN 卡片，说明目标和分工；用户设计事件列表和终止条件。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-09 S4-01 小米 14 实测通过：经 Anthropic 格式接口跑完工具循环，done、3 次请求、约 9 秒；卡片实现与实测齐全，剩两项口头检查。",
+  "last_update_summary": "2026-11-09 S4-01 done：用户写的工具循环经 DeepSeek Anthropic 格式接口在电脑和小米 14 上跑通，147 项离线测试通过；下一步 S4-02。",
   "next_session": {
-    "goal": "S4-01 独立模型适配和最小工具循环（学习卡）",
-    "timebox": "见 PLAN S4-01 卡",
+    "goal": "S4-02 可取消、待确认、受限上下文（学习卡）",
+    "timebox": "见 PLAN S4-02 卡",
     "steps": [
-      "用户沿一次调用说出 messages 的变化",
-      "用户比较自己的循环和 SDK 的职责",
-      "记录验收，S4-01 判 done"
+      "读卡片并确认分工",
+      "用户设计事件列表和终止条件",
+      "助手写失败测试，用户写终止与取消逻辑",
+      "助手补会话状态和事件序列化"
     ],
-    "stop_when": "按 PLAN S4-01 通过标准。"
+    "stop_when": "按 PLAN S4-02 通过标准。"
   },
   "known_blockers": [],
   "future_requirements": [
@@ -207,16 +208,17 @@
     },
     {
       "id": "S4-01",
-      "status": "verify",
+      "status": "done",
       "evidence": [
         "docs/LOG.md#s4-01"
       ],
-      "learning": "not_checked",
-      "blocker": null
+      "learning": "can_modify",
+      "blocker": null,
+      "learning_scope": "亲手写完 run_task 并做变异检查；能沿一次调用说出消息变化；与 SDK 的职责对比主要由助手讲解。"
     },
     {
       "id": "S4-02",
-      "status": "planned",
+      "status": "ready",
       "evidence": [],
       "learning": "not_checked",
       "blocker": null
