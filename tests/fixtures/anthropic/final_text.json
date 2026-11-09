@@ -1,0 +1,13 @@
+{
+  "id": "msg_fixture_2",
+  "type": "message",
+  "role": "assistant",
+  "model": "deepseek-flash",
+  "content": [
+    {"type": "thinking", "thinking": "结果里有条目 400602。", "signature": "sig-fixture-2"},
+    {"type": "text", "text": "《葬送的芙莉莲》条目 ID 是 400602。"}
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {"input_tokens": 1500, "output_tokens": 40}
+}

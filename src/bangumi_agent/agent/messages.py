@@ -27,7 +27,18 @@ class ToolResultBlock:
     is_error: bool = False
 
 
-Block = TextBlock | ToolCallBlock | ToolResultBlock
+@dataclass(frozen=True)
+class OpaqueBlock:
+    """A provider block the loop does not read, kept so it can be sent back unchanged.
+
+    Example: Anthropic-format thinking blocks. DeepSeek's thinking mode and Claude both
+    need them passed back in later requests; editing or dropping them can fail the request.
+    """
+    format: str  # which converter produced it, e.g. "anthropic"
+    data: dict[str, Any]
+
+
+Block = TextBlock | ToolCallBlock | ToolResultBlock | OpaqueBlock
 
 
 @dataclass

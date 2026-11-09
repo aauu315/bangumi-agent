@@ -1,0 +1,13 @@
+{
+  "id": "msg_fixture_3",
+  "type": "message",
+  "role": "assistant",
+  "model": "deepseek-flash",
+  "content": [
+    {"type": "text", "text": "我来查。"},
+    {"type": "tool_use", "id": "toolu_03", "name": "search_subjects", "input": {}}
+  ],
+  "stop_reason": "max_tokens",
+  "stop_sequence": null,
+  "usage": {"input_tokens": 900, "output_tokens": 384000}
+}

@@ -1199,6 +1199,23 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
   - 写入：确认交给用户，执行不经过大模型。答对；助手补充：执行工具不在允许列表里，模型即使请求也只会得到 UNKNOWN_TOOL。
   - 助手补充用户没提到的一点：循环只认内部消息格式（工具结果是 tool 角色），不依赖哪家接口。
 
+### 2026-11-09 · 第 3 步：Anthropic 格式转换层、工具注册、协议夹具（助手写）
+
+- 用户要求：转换层先写 Anthropic 格式，除了接 DeepSeek，也要支持 Anthropic 官方 API。做法：同一个转换层，两家只在 `AnthropicConfig`（地址、模型、max_tokens）上不同。
+- 文档核对（2026-11-09）：
+  - DeepSeek（`api-docs.deepseek.com/guides/anthropic_api`、中文价格页）：地址 `https://api.deepseek.com/anthropic`，`x-api-key` 认证，`anthropic-version` 被忽略；`tool_choice: none` 支持；`tool_result` 的 `is_error` 被忽略；思考模式默认开启，工具调用后要把含 thinking 块的完整 content 原样带回，否则可能 400；输出最大 384K。
+  - Anthropic（claude-api 技能资料）：`claude-opus-5-5` 输出上限 128K，API 版本 `2026-10-21`，`tool_choice: none` 不受影响；thinking 块要原样带回。
+- 由此对第 1 步的内部格式补了一种块 `OpaqueBlock`：转换层不认识的块（thinking 等）原样保存、原样发回。循环不读它，用户的 `run_task` 不用改。
+- 助手编写：
+  - `agent/anthropic_format.py`：`build_request`（tool 角色转 user、相邻同角色合并且工具结果在前、截断的调用仍发出空参数以保持配对、`allow_tools=False` 时发 `tool_choice: none` 但保留工具表）；`parse_response`（停止原因映射，refusal 等归为 other，参数不是对象按不完整处理）；`AnthropicModel`（urllib，不跟随重定向，响应大小上限，错误只保留状态码和错误类型，不带 Key 和响应原文）；`deepseek()`、`anthropic()` 两个预设。
+  - `agent/tool_registry.py`：`McpTools` 在进程内调用 `mcp_server.py` 的工具（不启动 MCP 进程），逐个列出 13 个允许的工具，不含 `execute_episode_plan`；MCP 的 `UnexpectedToolError` 是 `ToolError` 的子类、文字可能带原始异常，先单独接住并隐藏。
+  - `tests/fixtures/anthropic/`：按文档手写的 4 份响应，不是抓包。
+  - `tests/test_anthropic_format.py` 15 项，含一条经转换层跑完整个 `run_task` 的测试，检查第二次请求里 thinking 块原样带回、工具结果配对。
+  - `scripts/agent_chat.py`：第 4 步真实调用用，Key 隐藏输入、不保存。
+- 变异检查（助手做）：去掉 thinking 回传、错误里带出接口原文、总结轮仍发 auto、去掉隐藏 UnexpectedToolError 的分支，测试都失败。
+- 验证：141 项通过，pyright 0 报错。
+- 未验证：任何真实请求（DeepSeek、Anthropic 官方都没调过）；非流式请求配 384K/128K 上限时长回答是否超时；`McpTools` 依赖 mcp/pydantic，手机上（Chaquopy）能否安装未知，第 4 步手机实测时确认。
+
 ## S8-01
 
 ### 2026-11-05 · 私有 API 文档的初步调查（维护对话）
@@ -1213,6 +1230,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
+
+## 2026-11-09 · S4-01 第 3 步
+
+- 写好 Anthropic 格式转换层（DeepSeek 和 Anthropic 官方共用）、工具注册、协议夹具和真实调用脚本；141 项离线测试通过。详见 S4-01 节。
 
 ## 2026-11-09 · S4-01 第 2 步
 

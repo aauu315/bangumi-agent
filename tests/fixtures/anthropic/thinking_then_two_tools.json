@@ -1,0 +1,15 @@
+{
+  "id": "msg_fixture_1",
+  "type": "message",
+  "role": "assistant",
+  "model": "deepseek-flash",
+  "content": [
+    {"type": "thinking", "thinking": "用户想找芙莉莲，先搜索再看详情。", "signature": "sig-fixture-1"},
+    {"type": "text", "text": "我先搜一下。"},
+    {"type": "tool_use", "id": "toolu_01", "name": "search_subjects", "input": {"keyword": "葬送的芙莉莲", "limit": 5}},
+    {"type": "tool_use", "id": "toolu_02", "name": "get_subject", "input": {"subject_id": 400602}}
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {"input_tokens": 1200, "output_tokens": 85}
+}
