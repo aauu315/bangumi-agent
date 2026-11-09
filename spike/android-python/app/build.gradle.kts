@@ -68,8 +68,14 @@ chaquopy {
             include(
                 "bangumi_agent/__init__.py",
                 "bangumi_agent/api_client.py",
+                // S4-01：工具循环和 Anthropic 格式转换层（只用标准库）；不含依赖 mcp 的 tool_registry.py。
+                "bangumi_agent/agent/__init__.py",
+                "bangumi_agent/agent/messages.py",
+                "bangumi_agent/agent/loop.py",
+                "bangumi_agent/agent/anthropic_format.py",
                 "spike_demo.py",
-                "deepseek_probe.py"
+                "deepseek_probe.py",
+                "phone_agent.py"
             )
         }
     }

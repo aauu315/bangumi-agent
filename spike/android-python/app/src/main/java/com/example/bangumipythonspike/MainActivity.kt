@@ -52,6 +52,9 @@ class MainActivity : ComponentActivity() {
                 var protocolProbe by remember { mutableStateOf(false) }
                 var deepseekProbe by remember { mutableStateOf(false) }
                 var deepseekStream by remember { mutableStateOf(false) }
+                // S4-01：经 Anthropic 格式接口跑完整工具循环
+                var agentProbe by remember { mutableStateOf(false) }
+                var question by remember { mutableStateOf("葬送的芙莉莲的条目ID是多少，第一集叫什么") }
                 // 仅在内存输入，不使用rememberSaveable，不写文件或日志。
                 var apiKey by remember { mutableStateOf("") }
                 val scope = rememberCoroutineScope()
@@ -86,24 +89,49 @@ class MainActivity : ComponentActivity() {
                             }
                             Text("开始后清空输入框；不保存Key、不自动重试。取消不能保证撤销已产生的费用。")
                         }
+                        if (agentProbe) {
+                            Text("Agent工具循环 · DeepSeek Anthropic格式接口 · deepseek-flash")
+                            Text("一个问题最多8次模型请求，会消耗API余额；只用3个公开查询工具。")
+                            OutlinedTextField(
+                                value = apiKey,
+                                onValueChange = { apiKey = it },
+                                label = { Text("DeepSeek API Key（仅本次内存使用）") },
+                                singleLine = true,
+                                enabled = !loading,
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = question,
+                                onValueChange = { question = it },
+                                label = { Text("问题") },
+                                enabled = !loading,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text("开始后清空Key输入框；不保存Key。")
+                        }
                         Button(
                             enabled = !loading,
                             onClick = {
                                 if (loading) return@Button
-                                if (deepseekProbe && apiKey.isBlank()) {
+                                if ((deepseekProbe || agentProbe) && apiKey.isBlank()) {
                                     result = "请先在手机本地输入DeepSeek API Key，不要发到聊天里。"
                                     return@Button
                                 }
                                 val useDeepseekProbe = deepseekProbe
                                 val useDeepseekStream = deepseekStream
-                                val requestKey = if (useDeepseekProbe) apiKey else ""
-                                if (useDeepseekProbe) apiKey = ""
+                                val useAgentProbe = agentProbe
+                                val requestQuestion = question
+                                val requestKey = if (useDeepseekProbe || useAgentProbe) apiKey else ""
+                                if (useDeepseekProbe || useAgentProbe) apiKey = ""
                                 cancelRequested = false
                                 cancelTime = 0L
                                 val useLocalProbe = localProbe
                                 val useProtocolProbe = protocolProbe
                                 loading = true
                                 result = when {
+                                    useAgentProbe -> "Agent循环运行中……"
                                     useDeepseekProbe -> "正在测试DeepSeek……"
                                     useProtocolProbe -> "协议实验执行中（不联网）……"
                                     useLocalProbe -> "本地实验执行中（不联网）……"
@@ -115,6 +143,7 @@ class MainActivity : ComponentActivity() {
                                         result = withContext(Dispatchers.IO) {
                                             ensureActive()
                                             val taskName = when {
+                                                useAgentProbe -> "Agent循环实测"
                                                 useDeepseekProbe -> "DeepSeek协议实验"
                                                 useProtocolProbe -> "协议实验"
                                                 useLocalProbe -> "本地实验"
@@ -141,7 +170,11 @@ class MainActivity : ComponentActivity() {
 
                                                 // 第三段：调用查询函数
                                                 ensureActive()
-                                                val value = if (useDeepseekProbe) {
+                                                val value = if (useAgentProbe) {
+                                                    python.getModule("phone_agent").callAttr(
+                                                        "run_agent", requestKey, requestQuestion
+                                                    ).toString()
+                                                } else if (useDeepseekProbe) {
                                                     python.getModule("deepseek_probe").callAttr(
                                                         "run_deepseek_probe", requestKey, useDeepseekStream
                                                     ).toString()
@@ -192,6 +225,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text(
                                 if (loading) "查询中……"
+                                else if (agentProbe) "开始Agent循环（会请求模型）"
                                 else if (deepseekProbe) "开始DeepSeek测试（1次API请求）"
                                 else if (protocolProbe) "开始协议兼容实验"
                                 else if (localProbe) "开始5秒本地实验" else "查询星际牛仔"
@@ -201,16 +235,17 @@ class MainActivity : ComponentActivity() {
                         Button(
                             enabled = !loading,
                             onClick = {
-                                if (protocolProbe || deepseekProbe) {
+                                if (protocolProbe || deepseekProbe || agentProbe) {
                                     deepseekProbe = false
                                     protocolProbe = false
                                     localProbe = false
+                                    agentProbe = false
                                 } else {
                                     localProbe = !localProbe
                                 }
                             }
                         ) {
-                            Text(if (deepseekProbe || protocolProbe || localProbe) "切换为真实查询" else "切换为5秒本地实验（不联网）")
+                            Text(if (deepseekProbe || protocolProbe || localProbe || agentProbe) "切换为真实查询" else "切换为5秒本地实验（不联网）")
                         }
                         Button(
                             enabled = !loading,
@@ -218,6 +253,7 @@ class MainActivity : ComponentActivity() {
                                 deepseekProbe = false
                                 protocolProbe = true
                                 localProbe = false
+                                agentProbe = false
                             }
                         ) {
                             Text("切换为协议兼容实验（不联网）")
@@ -228,9 +264,21 @@ class MainActivity : ComponentActivity() {
                                 deepseekProbe = true
                                 protocolProbe = false
                                 localProbe = false
+                                agentProbe = false
                             }
                         ) {
                             Text("切换为DeepSeek真实测试")
+                        }
+                        Button(
+                            enabled = !loading,
+                            onClick = {
+                                agentProbe = true
+                                deepseekProbe = false
+                                protocolProbe = false
+                                localProbe = false
+                            }
+                        ) {
+                            Text("切换为Agent循环实测（S4-01）")
                         }
                         Button(
                             enabled = loading && !cancelRequested,
