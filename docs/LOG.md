@@ -1214,6 +1214,7 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
   - `scripts/agent_chat.py`：第 4 步真实调用用，Key 隐藏输入、不保存。
 - 变异检查（助手做）：去掉 thinking 回传、错误里带出接口原文、总结轮仍发 auto、去掉隐藏 UnexpectedToolError 的分支，测试都失败。
 - 验证：141 项通过，pyright 0 报错。
+- 用户问 Key 放在哪：原先每次隐藏输入、不存文件。用户说多数厂家的 Key 只显示一次，要求先做存放位置。助手新增 `agent/model_keys.py`：电脑上每家一个文件 `.secrets/<provider>-api-key.txt`（明文，git 已忽略，和 Bangumi Token 文件同样处理）；`agent_chat.py --save-key` 隐藏输入后保存，已有文件先问是否替换，`--prompt-key` 本次不读不写文件。手机端的加密存储仍是 S5-02。`tests/test_model_keys.py` 6 项；147 项通过，pyright 0 报错。
 - 未验证：任何真实请求（DeepSeek、Anthropic 官方都没调过）；非流式请求配 384K/128K 上限时长回答是否超时；`McpTools` 依赖 mcp/pydantic，手机上（Chaquopy）能否安装未知，第 4 步手机实测时确认。
 
 ## S8-01
