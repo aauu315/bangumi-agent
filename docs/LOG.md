@@ -1215,7 +1215,16 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - 变异检查（助手做）：去掉 thinking 回传、错误里带出接口原文、总结轮仍发 auto、去掉隐藏 UnexpectedToolError 的分支，测试都失败。
 - 验证：141 项通过，pyright 0 报错。
 - 用户问 Key 放在哪：原先每次隐藏输入、不存文件。用户说多数厂家的 Key 只显示一次，要求先做存放位置。助手新增 `agent/model_keys.py`：电脑上每家一个文件 `.secrets/<provider>-api-key.txt`（明文，git 已忽略，和 Bangumi Token 文件同样处理）；`agent_chat.py --save-key` 隐藏输入后保存，已有文件先问是否替换，`--prompt-key` 本次不读不写文件。手机端的加密存储仍是 S5-02。`tests/test_model_keys.py` 6 项；147 项通过，pyright 0 报错。
-- 未验证：任何真实请求（DeepSeek、Anthropic 官方都没调过）；非流式请求配 384K/128K 上限时长回答是否超时；`McpTools` 依赖 mcp/pydantic，手机上（Chaquopy）能否安装未知，第 4 步手机实测时确认。
+### 2026-11-09 · 第 4 步（电脑）：DeepSeek 真实只读调用
+
+- 用户用 `--save-key` 保存的 Key，在电脑上跑了两次 `agent_chat.py`（deepseek-flash，Anthropic 格式接口），终端输出贴回对话。
+  - “葬送的芙莉莲的条目ID是多少，第一集叫什么”：done，请求 3 次。第 1 轮 `search_subjects`；第 2 轮一次两个调用（`get_episodes`、`get_subject`），两条结果按调用顺序放在同一条消息里，ID 一一对应；回答条目 400602、第 1 集「冒険の終わり」。
+  - “我现在在看的动画都有什么”：done，请求 2 次。`get_my_collections`（读本地 Bangumi Token）列出 21 部；没有调用写入或预览工具。
+- 每轮回复都带 thinking 块，被存成 `OpaqueBlock` 并原样发回；DeepSeek 文档说思考模式下不带回可能 400，两次都没有报错。
+- 用户确认这些只读工具可以正常使用。
+- 未验证：Anthropic 官方接口真实调用；预览工具经 Agent 的真实调用；文字截断、工具截断和轮次上限在真实模型上的表现；非流式请求配 384K/128K 上限时长回答是否超时；手机实测。
+
+- 第 3 步当时的未验证项：任何真实请求（DeepSeek、Anthropic 官方都没调过）；非流式请求配 384K/128K 上限时长回答是否超时；`McpTools` 依赖 mcp/pydantic，手机上（Chaquopy）能否安装未知，第 4 步手机实测时确认。
 
 ## S8-01
 
@@ -1231,6 +1240,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
+
+## 2026-11-09 · S4-01 电脑真实调用
+
+- DeepSeek 真实只读调用两次均 done，工具调用与结果配对，thinking 原样带回未报错。下一步手机实测。详见 S4-01 节。
 
 ## 2026-11-09 · S4-01 第 3 步
 
