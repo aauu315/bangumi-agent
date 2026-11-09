@@ -1224,6 +1224,14 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - 用户确认这些只读工具可以正常使用。
 - 未验证：Anthropic 官方接口真实调用；预览工具经 Agent 的真实调用；文字截断、工具截断和轮次上限在真实模型上的表现；非流式请求配 384K/128K 上限时长回答是否超时；手机实测。
 
+### 2026-11-09 · 第 4 步（手机）：小米 14 上的工具循环
+
+- 范围：APK 打包 `run_task`、Anthropic 格式转换层和手机入口 `phone_agent.py`（3 个公开查询工具直接调 `api_client`）。电脑的 `McpTools` 依赖 mcp 包（连带服务端组件和带原生部分的 pydantic），这次不打包，手机工具怎么接入留给 S5。Key 仍只在内存里输入，开始后清空。
+- 助手在命令行构建失败（终端没有 JAVA_HOME，gradlew 找不到 JDK），用户在 Android Studio 构建安装。用户问没有 Java 代码为什么要 Java；助手答 Gradle、Kotlin 编译器和 Chaquopy 插件都运行在 Java 虚拟机上，Android Studio 自带 JDK。
+- 用户截图结果：“葬送的芙莉莲的条目ID是多少，第一集叫什么”，done，请求 3 次，接口 `https://api.deepseek.com/anthropic`；`search_subjects` → `get_episodes`，每轮都有 thinking 块被带回，没有报错；回答 400602、第 1 集「冒険の終わり」。函数执行 8993 ms（Python 已启动）。
+- 用户觉得等待时间长。助手解释：非流式，3 次模型请求（DeepSeek 默认思考）加 2 次 Bangumi 请求都结束后才一次显示；逐步显示进度要靠 S4-02 的事件和流式输出。回答里的 `**` 是 Markdown，手机界面没有渲染，属于 S5。
+- 未验证：每一段耗时的拆分；Release 包；手机上的本人收藏和预览工具；mcp/pydantic 能否装进 Chaquopy。
+
 - 第 3 步当时的未验证项：任何真实请求（DeepSeek、Anthropic 官方都没调过）；非流式请求配 384K/128K 上限时长回答是否超时；`McpTools` 依赖 mcp/pydantic，手机上（Chaquopy）能否安装未知，第 4 步手机实测时确认。
 
 ## S8-01
