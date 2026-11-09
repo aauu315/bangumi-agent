@@ -1166,6 +1166,32 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - 验证：新测试 19 项全部因 `NotImplementedError` 失败，原有 107 项通过；pyright 0 报错。助手在临时目录用自己的参考实现跑过一遍，19 项通过，确认测试彼此不矛盾；参考实现未进仓库。
 - 未做：DeepSeek 的 max_tokens 上限、Anthropic 格式下 tool_choice 是否支持 none、推理内容是否带回，留到第 3 步按官方文档核对。
 
+### 2026-11-09 · 第 2 步：用户写 run_task
+
+- 用户亲手写完 `run_task`，从框架到通过 19 项测试，助手只给提示和代码结构里留空的骨架。
+
+| 疑问或错误 | 原因 | 怎样修正 | 证据 |
+|---|---|---|---|
+| Pylance 报 `"[" was not closed`，但 `]` 写了 | 列表推导式 `[` 后直接写了 `for`，缺少“放进列表的值”，解析器放弃了这对括号 | 改用现成的 `tool_calls_of` | 红线消失 |
+| 不知道 `LoopResult` 的状态何时定义 | 以为要先存一个状态变量 | 在每个结束分支的 `return` 处当场构造；text 用 `text_of` 取 | `AnswersAndTools` 通过 |
+| `tools.run` 报 arguments 可能为 None | `ToolCallBlock.arguments` 是 `dict \| None` | 先判断 `is None`，回“参数不完整”并 `continue`（类型收窄） | 红线消失 |
+| 只跑了 `RoundLimit` 就以为全过 | 只跑了一组测试 | 跑整个测试文件，剩 13 项失败：is_error 写反、没检查允许列表、没接工具异常、截断一次就返回 | 逐项修正后通过 |
+| `py test\test_agent_loop.py` 找不到文件 | 目录名是 `tests` | 改路径 | 命令可运行 |
+| `UnboundLocalError: status` | `max_tokens` 分支的 `return` 和 if/else 同级，截断一次也返回，且 status 未赋值 | 用户读报错后把 return 缩进到 else 下 | `Truncation` 通过 |
+
+- 问答：
+  - 用户问 text 是否只是一轮的回复、要不要把整个 messages 传出；助手答 messages 是原地追加，调用方已持有，text 只放最终给用户看的文字。
+  - 用户问中间过程是否也要每轮返回；助手答 return 会结束循环，过程展示靠 S4-02 的事件，本卡不加。
+  - 用户问总结请求用什么角色、计数判断“已计轮数 + 1 == 最大轮数”是否可行；助手答用 user，判断可行，关键是计数何时加 1，并且“最后一轮”的判断要放在 stop 分支之前。
+  - 用户问在哪接工具报错；助手答接在 for 循环里面的 `tools.run` 处，先接 `ToolError` 再接 `Exception`。
+  - 用户说没听懂“截断后没有下一轮”；助手用测试里三轮的例子讲了截断文字与截断工具调用的区别，以及“连续两次”的计数。
+- 变异检查（用户自己做，并说出原因）：
+  - 调换两个 except：`test_expected_error_text_reaches_the_model` 失败。用户：`except ToolError` 放到后面后变灰，永远进不去。
+  - 删掉 `cut_count = 0`：`test_a_normal_round_resets_the_cut_count` 失败。用户：变成累计两次而不是连续两次。
+  - 最后一轮改成 `allow_tools=True`：两条 `RoundLimit` 测试失败。用户：总结时不应提供工具。助手补充：工具表仍随请求发出（历史里有工具调用，要用它描述），只是不允许调用。
+- 验证：126 项通过，pyright 0 报错。
+- 未做：允许列表每个调用重算 `tools.specs()` 等可选整理（用户自定）；“说出新循环和旧项目的不同”留到第 3 步前；转换层、真实调用未做。
+
 ## S8-01
 
 ### 2026-11-05 · 私有 API 文档的初步调查（维护对话）
@@ -1180,6 +1206,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
+
+## 2026-11-09 · S4-01 第 2 步
+
+- 用户写完 `run_task`，19 项测试通过，并做了三处变异检查。详见 S4-01 节。
 
 ## 2026-11-09 · S4-01 第 1 步
 

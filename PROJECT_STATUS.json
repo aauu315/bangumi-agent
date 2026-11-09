@@ -13,14 +13,14 @@
   "current_stage": "S3",
   "current_task": "S4-01",
   "next_task": "S4-01",
-  "next_action": "S4-01 第 2 步：用户在 src/bangumi_agent/agent/loop.py 写 run_task，直到 tests/test_agent_loop.py 通过，再做一次变异检查。",
-  "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型。未实现：Agent 工具循环（S4-01 进行中）、模型转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-09 S4-01 第 1 步：内部消息类型和 19 项失败测试已写好；原有 107 项通过，pyright 0 报错。",
+  "next_action": "S4-01 第 3 步：先由用户说出新循环和旧项目的不同；助手核对 DeepSeek 文档后写 Anthropic 转换层、工具注册和协议夹具。",
+  "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型和工具循环 run_task（用户写，假模型测试通过）。未实现：模型转换层、产品化手机界面、FastAPI、LangGraph。",
+  "last_update_summary": "2026-11-09 S4-01 第 2 步：用户写完 run_task，126 项离线测试通过，三处变异检查都被测试发现；转换层和真实调用未做。",
   "next_session": {
     "goal": "S4-01 独立模型适配和最小工具循环（学习卡）",
     "timebox": "见 PLAN S4-01 卡",
     "steps": [
-      "用户写 run_task 直到测试通过并做变异检查",
+      "用户说出新循环和旧项目的不同",
       "助手补 Anthropic 转换层、工具注册和协议夹具（先核对 DeepSeek 文档）",
       "经用户确认做一次真实只读调用（电脑），再做一次手机实测"
     ],

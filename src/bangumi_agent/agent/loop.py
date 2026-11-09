@@ -2,7 +2,8 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from .messages import ChatModel, Message, Tools
+from .messages import ChatModel, Message, Tools, ToolResultBlock, TextBlock, ToolError
+from .messages import tool_calls_of, text_of
 
 DEFAULT_MAX_ROUNDS = 20
 
@@ -28,4 +29,63 @@ class LoopResult:
 def run_task(model: ChatModel, tools: Tools, system: str, messages: list[Message],
              max_rounds: int = DEFAULT_MAX_ROUNDS) -> LoopResult:
     """Run one task. messages ends with the user's message and is extended in place."""
-    raise NotImplementedError("S4-01：由用户实现")
+
+    if max_rounds < 1:
+        raise ValueError(f"最大轮数应当是正整数")
+    loop_rounds = 0
+    cut_count = 0
+    while True:
+        if loop_rounds + 1 == max_rounds:
+            messages.append(Message("user", [TextBlock(SUMMARY_REQUEST)]))
+            model_response = model.complete(system,messages,tools.specs(),allow_tools = False)
+            messages.append(model_response.message)
+            loop_rounds += 1
+            status = "round_limit"
+            return LoopResult(status,text_of(model_response.message),loop_rounds)
+
+        model_response = model.complete(system,messages,tools.specs(),allow_tools = True)
+        messages.append(model_response.message)
+        loop_rounds += 1
+        if model_response.stop == "end":
+            status = "done"
+            return LoopResult(status,text_of(model_response.message),loop_rounds)
+        elif model_response.stop == "tool_calls":
+            cut_count = 0
+            calls = tool_calls_of(model_response.message)
+            results = []
+            allowed = {spec.name for spec in tools.specs()}
+            for call in calls:
+                if call.arguments is None:
+                    results.append(ToolResultBlock(call.id,INCOMPLETE_ARGUMENTS,is_error=True))
+                    continue
+                if call.name not in allowed:
+                    result = UNKNOWN_TOOL.format(name=call.name)
+                    results.append(ToolResultBlock(call.id,result,is_error=True))
+                else:
+                    try:
+                        result = tools.run(call.name,call.arguments)
+                        results.append(ToolResultBlock(call.id,result,is_error=False))
+                    except ToolError as e:
+                        results.append(ToolResultBlock(call.id, str(e), is_error=True))   
+                    except Exception:
+                        results.append(ToolResultBlock(call.id, HIDDEN_ERROR, is_error=True))   
+            messages.append(Message("tool",results))
+        elif model_response.stop == "max_tokens":
+            calls = tool_calls_of(model_response.message)
+            if len(calls) != 0:
+                results = []
+                for call in calls:
+                    results.append(ToolResultBlock(call.id,INCOMPLETE_ARGUMENTS,is_error=True))
+                messages.append(Message("tool",results))
+                cut_count += 1
+                if cut_count == 2:
+                    status = "repeated_cut"
+                    return LoopResult(status,text_of(model_response.message),loop_rounds)
+            else:
+                status = "text_cut"
+                return LoopResult(status,text_of(model_response.message),loop_rounds)
+        else:
+            status = "unexpected_stop"
+            return LoopResult(status,text_of(model_response.message),loop_rounds)
+        
+    
