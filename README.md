@@ -2,9 +2,10 @@
 
 > **⚠️ 项目状态：开发中的学习项目，尚不能投入正式使用。**
 >
-> - 已完成：作品搜索/详情/章节的匿名查询、本人身份与收藏的只读查询、单集“标为看过”的预览→人工批准→执行→读回（命令行，或在支持弹窗的 Agent 客户端里确认）、4 个 MCP 工具、Android 兼容性实验 APK。
-> - 进行中：扩充只读工具集（S3-05）。**唯一能修改网站数据的是单集进度，且必须由你本人对具体预览确认**：在客户端弹窗里点确认，或在命令行批准。模型不能代替你确认。已实测 Codex 桌面版和终端版 Claude Code 能弹窗，Claude 桌面版 Code 页不能，只能用命令行。
-> - 尚未开始：独立 Agent、可安装的正式 APK、日志与小组等网站业务。
+> - 已完成：作品、章节、角色、制作人员、放送表等匿名查询；本人身份、收藏和每集观看状态的只读查询；章节进度修改（单集或“看到第 N 集”，可改为未收藏、想看、看过、抛弃），经预览和你本人确认后执行并读回；14 个 MCP 工具；Android 兼容性实验 APK。
+> - 进行中：独立 Agent 的工具循环（S4-01）。
+> - 尚未开始：可安装的正式 APK、条目收藏修改（整部作品的状态、评分、短评）、日志与小组等网站业务。
+> - **唯一能修改网站数据的是章节进度，且必须由你本人对具体预览确认**：在客户端弹窗里点确认，或在命令行批准，模型不能代替你确认。已实测 Codex 桌面版和终端版 Claude Code 能弹窗，Claude 桌面版 Code 页不能，只能用命令行。修改会在你的 Bangumi 时间线上留下动态。
 > - 当前进度以 [PROJECT_STATUS.json](PROJECT_STATUS.json) 为准，完整路线见 [docs/PLAN.md](docs/PLAN.md)。
 
 通过 AI Agent 完成 Bangumi 网站上的各类工作：作品查询、收藏与进度管理，以及日志、小组浏览和讨论等。普通用户的入口是本地 Android APK，自己配置模型 Key 和 Bangumi 凭据；开发者可以通过 MCP 在 Agent 客户端里调用。
@@ -51,12 +52,13 @@ uv run pyright
 
 ## MCP 工具
 
-MCP 客户端用 stdio 启动 `.venv\Scripts\python.exe -m bangumi_agent.mcp_server`（直接在终端运行会停在等待协议输入）。当前工具：
+MCP 客户端用 stdio 启动 `.venv\Scripts\python.exe -m bangumi_agent.mcp_server`（直接在终端运行会停在等待协议输入）。
 
-- `search_subjects(keyword, limit=10, offset=0)`：匿名搜索作品。
-- `get_subject(subject_id)`：匿名查询作品详情。
-- `preview_episode_watched(subject_id, episode_id)`：为“某集标为看过”创建本地预览草稿，不修改网站。需要本地 Token。
-- `execute_episode_plan(plan_id)`：让客户端弹窗显示具体修改，你点确认后才写入并读回。拒绝、取消或客户端弹不出窗口时都不写入，这时可以改用下文的命令行批准。需要本地 Token。
+全部工具的用途、是否需要凭据、参数和返回字段见 [docs/tools.md](docs/tools.md)。其中：
+
+- 查询类工具只读，不修改收藏；带 `my_` 的需要本地 Token。
+- `preview_episode_watched`、`preview_watched_up_to`、`preview_episode_change` 只创建本地预览草稿，不修改网站。
+- `execute_episode_plan(plan_id)` 让客户端弹窗显示具体修改，你点确认后才写入并读回。拒绝、取消或客户端弹不出窗口时都不写入，这时可以改用下文的命令行批准。
 
 ## 本人数据：Token 文件
 
@@ -72,7 +74,7 @@ python scripts/account_readonly.py
 
 先显示当前 Token 对应的账号，确认是本人后再读动画在看列表，可以逐页读取，也可以输入条目 ID 查看章节状态。`--me-only` 只查身份。
 
-## 单集进度：预览、批准、执行
+## 章节进度：预览、批准、执行
 
 为某一集创建“标为看过”的本地草稿，例如《中国奇谭 第二季》第 4 集：
 
