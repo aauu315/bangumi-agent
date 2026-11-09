@@ -1156,6 +1156,16 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - 用户核对时间线：写入后确实多出动态，和服务端代码（`timeline.ChangeEpisodeStatus`）一致。
 - 未验证：单集 PUT 写抛弃条目；想看、看过、搁置条目的真实写入。
 
+## S4-01
+
+### 2026-11-09 · 第 1 步：内部类型、假模型和失败测试
+
+- 用户确认分工：用户写 `agent/loop.py` 的 `run_task`（可自拆出执行工具的辅助函数）；内部类型、假模型、测试、Anthropic 转换层、工具注册、协议夹具由助手写。卡分 4 步：测试 → 用户写循环 → 转换层与注册 → 真实只读调用（电脑、手机各 1 次）。
+- 助手编写：`agent/messages.py`（`Message`、三种块、`ModelReply`、`ToolSpec`、`ToolError`，以及模型和工具的接口 `ChatModel`、`Tools`）；`agent/loop.py` 只有 `run_task` 签名、`LoopResult` 和固定文案；`tests/test_agent_loop.py` 19 项。
+- 接口上的决定（助手提出，作为测试的约定）：参数解析失败用 `arguments=None` 表示；第 max_rounds 次请求不带工具，前面追加一条总结请求，所以一次任务的请求数不超过 max_rounds；工具调用被截断时仍给每个调用回一条错误结果，保持配对；未知停止原因返回 `unexpected_stop`，不抛异常。
+- 验证：新测试 19 项全部因 `NotImplementedError` 失败，原有 107 项通过；pyright 0 报错。助手在临时目录用自己的参考实现跑过一遍，19 项通过，确认测试彼此不矛盾；参考实现未进仓库。
+- 未做：DeepSeek 的 max_tokens 上限、Anthropic 格式下 tool_choice 是否支持 none、推理内容是否带回，留到第 3 步按官方文档核对。
+
 ## S8-01
 
 ### 2026-11-05 · 私有 API 文档的初步调查（维护对话）
@@ -1170,6 +1180,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
+
+## 2026-11-09 · S4-01 第 1 步
+
+- 写好内部消息类型和 19 项失败测试，等用户写 `run_task`。详见 S4-01 节。
 
 ## 2026-11-09 · 回收旧项目经验，调整 S4-01
 
