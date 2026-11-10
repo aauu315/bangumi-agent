@@ -109,6 +109,10 @@ class ExecutionService:
             self._move(plan, account_id, "expired", now, "到期未执行")
             raise PlanError("计划已过期；请重新读取网站状态并创建新草稿")
 
+    def get(self, plan_id) -> dict[str, Any]:
+        """The plan as stored, whatever its status. Changes nothing."""
+        return self._load(plan_id)[1]
+
     def approve(self, plan_id) -> dict[str, Any]:
         account_id, plan, now = self._load(plan_id)
         if plan["status"] != "draft":

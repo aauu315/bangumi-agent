@@ -6,13 +6,13 @@ tool_execution.py (S4-R).
 from dataclasses import dataclass
 from typing import Literal
 
-from .messages import ChatModel, Message, Tools, TextBlock
+from .messages import CancelFlag, ChatModel, Message, Tools, TextBlock
 from .messages import tool_calls_of, text_of
 # HIDDEN_ERROR and UNKNOWN_TOOL are not used here; they stay importable from this module for the tests.
-from .tool_execution import HIDDEN_ERROR, INCOMPLETE_ARGUMENTS, UNKNOWN_TOOL
+from .tool_execution import CANCELLED_TOOL, HIDDEN_ERROR, INCOMPLETE_ARGUMENTS, UNKNOWN_TOOL
 from .tool_execution import execute_tool_calls, refuse_tool_calls
 
-__all__ = ["DEFAULT_MAX_ROUNDS", "HIDDEN_ERROR", "INCOMPLETE_ARGUMENTS", "SUMMARY_REQUEST", "UNKNOWN_TOOL",
+__all__ = ["CANCELLED_TOOL", "DEFAULT_MAX_ROUNDS", "HIDDEN_ERROR", "INCOMPLETE_ARGUMENTS", "SUMMARY_REQUEST", "UNKNOWN_TOOL",
            "LoopResult", "LoopStatus", "run_task"]
 
 DEFAULT_MAX_ROUNDS = 20
@@ -22,8 +22,9 @@ SUMMARY_REQUEST = "已到达本次任务的轮次上限，请不要再调用工�
 
 # done: the model finished; text_cut: the answer was cut off, the user can say "继续";
 # round_limit: rounds ran out and the model summarised, the user can continue;
-# repeated_cut: tool calls were cut off twice in a row; unexpected_stop: unknown stop reason.
-LoopStatus = Literal["done", "text_cut", "round_limit", "repeated_cut", "unexpected_stop"]
+# repeated_cut: tool calls were cut off twice in a row; unexpected_stop: unknown stop reason;
+# cancelled: the user cancelled, the history is left paired and the user can continue (S4-02).
+LoopStatus = Literal["done", "text_cut", "round_limit", "repeated_cut", "unexpected_stop", "cancelled"]
 
 
 @dataclass
@@ -34,8 +35,11 @@ class LoopResult:
 
 
 def run_task(model: ChatModel, tools: Tools, system: str, messages: list[Message],
-             max_rounds: int = DEFAULT_MAX_ROUNDS) -> LoopResult:
-    """Run one task. messages ends with the user's message and is extended in place."""
+             max_rounds: int = DEFAULT_MAX_ROUNDS, cancel: CancelFlag | None = None) -> LoopResult:
+    """Run one task. messages ends with the user's message and is extended in place.
+
+    cancel: S4-02, to be handled by the user; tests/test_agent_cancel.py is the spec.
+    """
 
     if max_rounds < 1:
         raise ValueError(f"最大轮数应当是正整数")

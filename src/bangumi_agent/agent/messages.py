@@ -94,6 +94,12 @@ class Tools(Protocol):
         ...
 
 
+class CancelFlag(Protocol):
+    """Set by the interface when the user cancels. threading.Event fits; so does any object with is_set()."""
+
+    def is_set(self) -> bool: ...
+
+
 def text_of(message: Message) -> str:
     """All text blocks of a message joined together."""
     return "".join(block.text for block in message.content if isinstance(block, TextBlock))
