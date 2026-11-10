@@ -72,6 +72,7 @@ chaquopy {
                 "bangumi_agent/agent/__init__.py",
                 "bangumi_agent/agent/messages.py",
                 "bangumi_agent/agent/loop.py",
+                "bangumi_agent/agent/tool_execution.py",
                 "bangumi_agent/agent/anthropic_format.py",
                 "spike_demo.py",
                 "deepseek_probe.py",
