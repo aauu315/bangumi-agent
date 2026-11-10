@@ -1243,6 +1243,24 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 
 - 第 3 步当时的未验证项：任何真实请求（DeepSeek、Anthropic 官方都没调过）；非流式请求配 384K/128K 上限时长回答是否超时；`McpTools` 依赖 mcp/pydantic，手机上（Chaquopy）能否安装未知，第 4 步手机实测时确认。
 
+## S4-R
+
+### 2026-11-10 · 移植旧项目的工具执行层（维护对话）
+
+- 起因：用户反馈 S4-01 不到一百行花了一下午，其中工具分发、配对、两类错误在旧项目都写过；旧项目里“检查工具能不能用”是独立函数，这次却写在主循环里，以后还得拆。核对代码属实：`loop.py` 在循环里查了一遍允许列表，`McpTools.run` 又查了一遍。
+- 决定（用户确认）：加 S4-R 产出卡并在维护对话里完成；S4-02、S4-06 改为从移植代码出发，用户只写旧项目没有的部分；推进对话以后不读旧项目，只读 `docs/prior-agent-notes.md` 的移植包；AGENTS.md 加两条规则（旧项目写过的不重写；职责已独立的部分不让用户写进同一个函数）。
+- 助手编写：
+  - `agent/tool_execution.py`：`check_tool_call`（allow / deny / invalid）、`run_tool`、`execute_tool_calls`、`refuse_tool_calls`，对应旧项目的 `check_tool_call`、`run_tool`、`execute_tool_uses`。三条固定文案从 `loop.py` 移到这里，`loop.py` 仍可导入。
+  - `agent/loop.py`：`run_task` 的工具分支改为一行 `execute_tool_calls`，截断分支改为 `refuse_tool_calls`；轮次计数和各停止分支是用户原来的代码，没有动。
+  - `tests/test_tool_execution.py` 2 项：检查顺序和结果（subTest 5 例）、`refuse_tool_calls` 的配对。
+  - 手机实验的打包清单 `build.gradle.kts` 加上 `tool_execution.py`。
+  - `docs/prior-agent-notes.md` 新增“移植包”A～F：工具执行层对照表、工具执行中的中断、流式中断与会话状态、上下文压缩、假模型的中断手法、按类型分档的权限，每段附搬过来要改什么。
+- 行为变化一处：不在允许列表里、参数又解析失败的调用，原来回“参数不完整”，现在回“没有这个工具”（沿用旧项目先查名字的顺序）。原有测试没有覆盖这种组合，新测试已覆盖。
+- `McpTools.run` 里的允许列表检查保留：它保证绕过 `execute_tool_calls` 直接调用注册表时也不会执行列表外的工具。
+- 变异检查：把 `check_tool_call` 的两项检查对调，`test_decisions` 失败。
+- 验证：`unittest discover -s tests` 149 项通过（原 147 项加新 2 项，`test_agent_loop.py` 19 项未改）；手机实验离线测试 13 项通过；pyright 0 报错。
+- 未验证：手机 APK 没有重新构建，新文件在手机上的导入要到下次构建安装时确认；没有真实模型调用。
+
 ## S8-01
 
 ### 2026-11-05 · 私有 API 文档的初步调查（维护对话）
@@ -1257,6 +1275,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
+
+## 2026-11-10 · S4-R 完成，调整 S4 后续卡（维护对话）
+
+- 工具检查和执行从 `run_task` 移到 `agent/tool_execution.py`；后续卡要用的旧项目代码写进 `prior-agent-notes.md` 的移植包；PLAN 新增 S4-R，S4-02、S4-06 改分工；AGENTS.md 加两条规则。下一步 S4-02。详见 S4-R 节。
 
 ## 2026-11-09 · S4-01 完成
 
