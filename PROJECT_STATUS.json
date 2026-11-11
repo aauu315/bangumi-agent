@@ -13,9 +13,9 @@
   "current_stage": "S4",
   "current_task": "S4-03",
   "next_task": "S4-03",
-  "next_action": "S4-03 第 2 步：助手先写评分函数的失败测试，用户写评分函数（对比 expect 和实际工具调用）。",
+  "next_action": "S4-03 第 2 步：用户在 src/bangumi_agent/evals/scoring.py 写 score_tools，直到 tests/test_eval_scoring.py 通过。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、独立的工具执行层 tool_execution（S4-R 从旧项目移植）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。Agent 事件、会话层（取消、用户确认、上下文限额）只有离线测试。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-11 S4-03 第 1 步完成：20 个用例冻结在 evals/20-cases.json（第一类用户写，其余按用户规则由助手整理），格式校验 4 项，182 项测试通过。",
+  "last_update_summary": "2026-11-11 S4-03 第 2 步：评分函数的失败测试 15 项和留空骨架已写好，等用户实现 score_tools。",
   "next_session": {
     "goal": "S4-03 建立可重复的 Agent 评测",
     "timebox": "见 PLAN S4-03 卡",
