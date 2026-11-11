@@ -13,14 +13,36 @@ import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from bangumi_agent.agent.anthropic_format import AnthropicModel, ModelError, anthropic, deepseek
-from bangumi_agent.agent.loop import run_task
-from bangumi_agent.agent.messages import Message, OpaqueBlock, TextBlock, ToolResultBlock, tool_calls_of
+from bangumi_agent.agent.anthropic_format import AnthropicModel, anthropic, deepseek
+from bangumi_agent.agent.events import Event
 from bangumi_agent.agent.model_keys import MissingKeyError, key_path, read_key, save_key
+from bangumi_agent.agent.session import AgentSession
 from bangumi_agent.agent.tool_registry import McpTools
 
 SYSTEM = ("你是 Bangumi 助手，用提供的工具回答用户关于番剧、条目和本人收藏的问题。"
           "需要修改进度时只创建预览，并告诉用户要在界面上确认；不要声称已经修改。")
+
+
+def _show(event: Event) -> None:
+    """Print one line per event: the readable summary first, short facts after it."""
+    data = event.data
+    if event.type == "model_request":
+        print(f"· {event.summary}（第 {data['round']} 轮）")
+    elif event.type == "thinking":
+        print(f"· 思考过程（{len(data['text'])} 字，已折叠）")
+    elif event.type == "tool_call":
+        print(f"· {event.summary}    [{data['name']} {json.dumps(data['arguments'], ensure_ascii=False)}]")
+    elif event.type == "tool_result":
+        print(f"  {event.summary}" + (f"：{data['error']}" if data["is_error"] else f"（{data['size']} 字）"))
+    elif event.type == "approval_required":
+        print(f"· {event.summary}（计划 {data['plan_id']}）")
+        print(data["message"])
+        print("  本脚本不执行写入；可用 scripts/progress_preview.py 的 approve 和 execute，或在 MCP 客户端里确认。")
+    elif event.type == "completed":
+        print()
+        print(event.summary)
+    else:
+        print(f"· {event.summary}")
 
 
 def _hidden_input(prompt: str) -> str:
@@ -73,23 +95,14 @@ def main() -> int:
     model = AnthropicModel(config, key)
     key = None
 
-    messages = [Message("user", [TextBlock(args.question)])]
-    try:
-        result = run_task(model, McpTools(), SYSTEM, messages, max_rounds=args.max_rounds)
-    except ModelError as exc:
-        print(f"模型请求失败：{exc}")
+    session = AgentSession(model, McpTools(), SYSTEM, _show, max_rounds=args.max_rounds)
+    outcome = session.send(args.question)
+    state = session.state
+    print()
+    print(f"状态：{outcome.status}，请求 {outcome.rounds} 次，"
+          f"输入 {state.input_tokens} / 输出 {state.output_tokens} token")
+    if outcome.status in ("model_error", "context_full"):
         return 1
-
-    for message in messages[1:]:
-        for call in tool_calls_of(message):
-            print(f"[调用] {call.id} {call.name} {json.dumps(call.arguments, ensure_ascii=False)}")
-        for block in message.content:
-            if isinstance(block, ToolResultBlock):
-                mark = "错误" if block.is_error else "结果"
-                print(f"[{mark}] {block.call_id} {len(block.content)} 字")
-            elif isinstance(block, OpaqueBlock):
-                print(f"[未解析块] {block.data.get('type')}")
-    print(f"\n状态：{result.status}，请求 {result.rounds} 次\n{result.text}")
     return 0
 
 

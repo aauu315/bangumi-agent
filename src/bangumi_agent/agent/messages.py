@@ -36,6 +36,9 @@ class OpaqueBlock:
     """
     format: str  # which converter produced it, e.g. "anthropic"
     data: dict[str, Any]
+    # Filled in by the converter only so the interface can show something; never sent anywhere.
+    kind: str = ""  # "thinking" for the model's reasoning, "" for anything else
+    text: str = ""  # the readable part, if there is one
 
 
 Block = TextBlock | ToolCallBlock | ToolResultBlock | OpaqueBlock

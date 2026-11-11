@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-10",
+  "updated_at": "2026-11-11",
   "project_root": "E:\\myproject\\bangumi-agent",
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
@@ -13,17 +13,16 @@
   "current_stage": "S4",
   "current_task": "S4-02",
   "next_task": "S4-02",
-  "next_action": "S4-02 第 3 步：用户在 loop.py 的 run_task 里加取消判断（tests/test_agent_cancel.py），并写 agent/plan_cancel.py 的 settle_plan_on_cancel（tests/test_plan_cancel.py），再做变异检查。",
-  "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、独立的工具执行层 tool_execution（S4-R 从旧项目移植）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-10 S4-02 第 1、2 步：事件、取消和计划处理规则已定；工具执行中的取消已移植，14 项新测试里用户部分 12 项待实现，其余 151 项通过。",
+  "next_action": "S4-02 剩：决定是否做附加项上下文压缩；验收“模型输出与真实执行状态哪个可信”，记录后判状态。",
+  "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、独立的工具执行层 tool_execution（S4-R 从旧项目移植）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。Agent 事件、会话层（取消、用户确认、上下文限额）只有离线测试。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
+  "last_update_summary": "2026-11-11 S4-02：用户写完取消判断和 settle_plan_on_cancel；助手补事件、会话层、确认接口和上下文限额，178 项离线测试通过。压缩未做，未经真实模型。",
   "next_session": {
     "goal": "S4-02 可取消、待确认、受限上下文（学习卡）",
     "timebox": "见 PLAN S4-02 卡",
     "steps": [
-      "用户写 run_task 的取消判断和 settle_plan_on_cancel，做变异检查",
-      "助手写事件类型与发出、会话状态和外层循环（移植包 C）、确认接口、工具说明文案",
-      "上下文限额：明确停止；核对 token 来源后决定是否做压缩",
-      "验收：用户讲清模型输出与真实执行状态哪个可信"
+      "决定是否做上下文压缩（附加项）",
+      "验收：用户讲清模型输出与真实执行状态哪个可信",
+      "记录并判定 S4-02 状态"
     ],
     "stop_when": "按 PLAN S4-02 通过标准。"
   },
@@ -227,8 +226,10 @@
     },
     {
       "id": "S4-02",
-      "status": "active",
-      "evidence": [],
+      "status": "verify",
+      "evidence": [
+        "docs/LOG.md#s4-02"
+      ],
       "learning": "not_checked",
       "blocker": null
     },

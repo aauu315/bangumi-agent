@@ -113,8 +113,11 @@ def parse_response(data: Any) -> ModelReply:
                 raise ModelError("工具调用缺少ID或名称")
             arguments = raw.get("input")
             content.append(ToolCallBlock(raw["id"], raw["name"], arguments if isinstance(arguments, dict) else None))
+        elif kind == "thinking":
+            text = raw.get("thinking")
+            content.append(OpaqueBlock(FORMAT, raw, "thinking", text if isinstance(text, str) else ""))
         else:
-            content.append(OpaqueBlock(FORMAT, raw))  # thinking, redacted_thinking, future types
+            content.append(OpaqueBlock(FORMAT, raw))  # redacted_thinking, future types
     stop = STOP_REASONS.get(str(data.get("stop_reason")), "other")
     usage = data.get("usage")
     if not isinstance(usage, dict):

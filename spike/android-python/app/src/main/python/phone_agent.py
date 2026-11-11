@@ -77,7 +77,7 @@ def _trace(messages: list[Message]) -> list[str]:
             if isinstance(block, ToolResultBlock):
                 lines.append(f"[{'错误' if block.is_error else '结果'}] {len(block.content)} 字")
             elif isinstance(block, OpaqueBlock):
-                lines.append(f"[未解析块] {block.data.get('type')}")
+                lines.append("[思考]" if block.kind == "thinking" else f"[其他块] {block.data.get('type')}")
     return lines
 
 
