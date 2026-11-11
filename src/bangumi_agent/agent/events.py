@@ -56,16 +56,16 @@ TOOL_LABELS = {
 }
 
 PLAN_STATUS_TEXT = {
-    "draft": "还是草稿，没有修改 Bangumi",
-    "approved": "已批准，还没有修改 Bangumi",
-    "cancelled": "已作废，没有修改 Bangumi",
-    "expired": "已过期，没有修改 Bangumi",
-    "rejected": "网站上的状态变了，没有修改 Bangumi",
-    "executing": "正在执行，结果还不知道",
-    "verified": "已修改，并从 Bangumi 读回核对过",
-    "failed": "没有改成",
+    "draft": "还是草稿，没有执行",
+    "approved": "已批准，暂未执行",
+    "cancelled": "已作废",
+    "expired": "已过期",
+    "rejected": "网站状态发生改变，未执行",
+    "executing": "正在执行",
+    "verified": "已修改并核对",
+    "failed": "失败",
     "unknown": "结果未知，请稍后核对，不要重复操作",
-    "partial": "只改成了一部分",
+    "partial": "部分完成",
 }
 
 
