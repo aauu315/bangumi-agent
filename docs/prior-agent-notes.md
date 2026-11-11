@@ -90,7 +90,8 @@
 |---|---|---|
 | S4-01 工具循环（done） | 第 1～4 节：循环、消息配对、结束方式、两类错误、max_tokens 截断 | 已重写为 `agent/loop.py` |
 | S4-R 工具执行层（done） | 检查、执行、统一出错文案 | 已移植为 `agent/tool_execution.py`，见移植包 A |
-| S4-02 取消、待确认、上下文限额 | 中断、半截回复不写入历史、会话状态、上下文压缩 | 移植包 B、C、D |
+| S4-02 取消、待确认、上下文限额（done） | 中断、半截回复不写入历史、会话状态 | 移植包 B、C，已移植为 `agent/session.py` 等 |
+| S4-07 上下文压缩 | 上下文压缩 | 移植包 D |
 | S4-03 评测 | 假模型的写法 | 本项目 `tests/test_agent_loop.py` 的 `FakeModel` 已是同一写法；移植包 E |
 | S4-05 第二家提供商 | 第 5 节通信协议，以及内部统一格式 | 没有可搬的代码 |
 | S4-06 信任模式 | 第 1 节按工具类型分档的权限 | 移植包 F |
@@ -225,7 +226,9 @@ def main():
 - 本项目现在是非流式请求，没有“半截回复”。接入流式之前，取消只能发生在两次请求之间和工具之间；接入流式后沿用“半截回复不写入历史”。
 - 取消不必用异常表示，可以是 `LoopResult` 的一种状态，由用户在 S4-02 设计事件和终止条件时决定。
 
-### D. 上下文压缩（S4-02 的附加项）
+### D. 上下文压缩（S4-07）
+
+原定是 S4-02 的附加项，2026-11-11 改为单独的 S4-07 卡。S4-02 已做的部分：限额基线在 `agent/session.py`（`DEFAULT_CONTEXT_LIMIT`、`_ObservedModel.complete` 发请求前检查、`SessionState.last_request_tokens`）。
 
 ```python
 COMPRESSION_TRIGGER_TOKENS = 30_000   # 下轮输入 + 预留输出达到此值时压缩
@@ -294,13 +297,14 @@ def compress_messages(history, next_request_tokens):
 在循环里的位置：每次正式请求之前先计数、再压缩，压缩完成后才给轮次加 1；`messages[:] = compressed_messages` 原地替换，调用方手里的列表跟着变。
 
 搬过来要改：
-- **token 从哪来要先核对。** 旧项目每次请求前调 SDK 的 `client.messages.count_tokens`。本项目用 `urllib`，DeepSeek 的 Anthropic 格式接口有没有计数端点还没查。不依赖端点的做法：用上一次 `ModelReply.usage.input_tokens + output_tokens` 估计下一次的输入（下一次的输入大致是它再加上新的工具结果）。
+- **token 来源已定（S4-02）：** 旧项目每次请求前调 SDK 的 `client.messages.count_tokens`；本项目不用计数端点，用上一次 `ModelReply.usage.input_tokens + output_tokens` 估计下一次的输入（下一次的输入大致是它再加上新的工具结果），存在 `SessionState.last_request_tokens`。DeepSeek 有没有计数端点没有查，也不需要。
 - 触发线 30 000 和预留 4096 是按旧项目设的。本项目 max_tokens 设为模型上限（DeepSeek 384K），不能再用“输入 + max_tokens”来判断，要按模型的上下文窗口另定。
 - `contains_tool_result(message)` 在本项目就是 `message.role == "tool"`。
 - 摘要请求用 `ChatModel.complete(COMPRESSION_PROMPT, old_messages, tools.specs(), allow_tools=False)`：旧消息里有工具调用，工具表要照样带上。
 - 旧消息里的 `OpaqueBlock`（thinking）随旧消息一起被摘要替换；保留下来的最近几条里的 thinking 块必须原样留着，否则 DeepSeek 可能 400。
 - 提示词第 4、5 条说的是文件和命令，换成本项目的内容：查到的条目和 ID、生成过的预览及其是否已确认。**摘要不能让模型以为某次写入已经执行**：写入结果只以业务层记录为准。
-- S4-02 卡的基线是“上下文过大时明确停止、要求新会话”，压缩是在这之上的附加项，两者要能分别测试。
+- S4-02 的基线“上下文过大时明确停止、要求新对话”保留，压缩加在它前面：压缩失败或压不下去时仍按基线停止，两者分别测试。
+- 写入状态由程序按业务记录重新写进历史（`session.py` 的 `_report_plan` 写的“程序记录”消息），不靠摘要复述。
 
 ### E. 假模型（S4-02 流式、S4-03）
 

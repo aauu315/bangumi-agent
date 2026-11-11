@@ -32,7 +32,7 @@
     "模型：DeepSeek 已做手机端协议实验；完整 Agent 在 S4，第二家在 S4-05。真实调用使用用户自己的 Key 和费用。",
     "S7 需要用户自己邀请测试者；公开发布需另行授权。",
     "S4-04 的 LangGraph 只用于 Python/服务端路线，开工时再核对版本。",
-    "上下文压缩（S4-02 附加项）未做：建议挂到 S4-03 之后或 S5；移植包 D 可用，token 来源用上一次回复的 usage。"
+    "上下文压缩未做，已立为 S4-07（前置 S4-03，建议在 S5-02 之前做，不阻塞 S5）；在此之前对话到限额会停止并要求新对话。"
   ],
   "tasks": [
     {
@@ -257,6 +257,13 @@
     },
     {
       "id": "S4-06",
+      "status": "planned",
+      "evidence": [],
+      "learning": "not_checked",
+      "blocker": null
+    },
+    {
+      "id": "S4-07",
       "status": "planned",
       "evidence": [],
       "learning": "not_checked",
