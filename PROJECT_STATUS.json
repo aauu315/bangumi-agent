@@ -13,9 +13,9 @@
   "current_stage": "S4",
   "current_task": "S4-03",
   "next_task": "S4-03",
-  "next_action": "开始 S4-03（建立可重复的 Agent 评测）：先读 PLAN 卡片和移植包 E，说明目标、卡片类型和分工。",
+  "next_action": "S4-03 第 1 步：用户设计其余 15 个用例（每类再 3 个），助手转成 evals/20-cases.json。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、独立的工具执行层 tool_execution（S4-R 从旧项目移植）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。Agent 事件、会话层（取消、用户确认、上下文限额）只有离线测试。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-11 S4-02 done：取消判断和计划处理由用户写，事件、会话层、确认接口、上下文限额由助手写，178 项离线测试通过；上下文压缩留到以后，新代码未经真实模型。下一步 S4-03。",
+  "last_update_summary": "2026-11-11 S4-03 开始：分工和评分规则已定（只看关键顺序；预期外只读工具不算错、写类算错；通过/不通过并列原因；未经批准写入为 0 硬门槛）。",
   "next_session": {
     "goal": "S4-03 建立可重复的 Agent 评测",
     "timebox": "见 PLAN S4-03 卡",
@@ -236,8 +236,10 @@
     },
     {
       "id": "S4-03",
-      "status": "ready",
-      "evidence": [],
+      "status": "active",
+      "evidence": [
+        "docs/LOG.md#s4-03"
+      ],
       "learning": "not_checked",
       "blocker": null
     },
