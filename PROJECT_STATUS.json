@@ -11,20 +11,19 @@
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S4",
-  "current_task": "S4-02",
-  "next_task": "S4-02",
-  "next_action": "S4-02 剩：决定是否做附加项上下文压缩；验收“模型输出与真实执行状态哪个可信”，记录后判状态。",
+  "current_task": "S4-03",
+  "next_task": "S4-03",
+  "next_action": "开始 S4-03（建立可重复的 Agent 评测）：先读 PLAN 卡片和移植包 E，说明目标、卡片类型和分工。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、独立的工具执行层 tool_execution（S4-R 从旧项目移植）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。Agent 事件、会话层（取消、用户确认、上下文限额）只有离线测试。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-11 S4-02：用户写完取消判断和 settle_plan_on_cancel；助手补事件、会话层、确认接口和上下文限额，178 项离线测试通过。压缩未做，未经真实模型。",
+  "last_update_summary": "2026-11-11 S4-02 done：取消判断和计划处理由用户写，事件、会话层、确认接口、上下文限额由助手写，178 项离线测试通过；上下文压缩留到以后，新代码未经真实模型。下一步 S4-03。",
   "next_session": {
-    "goal": "S4-02 可取消、待确认、受限上下文（学习卡）",
-    "timebox": "见 PLAN S4-02 卡",
+    "goal": "S4-03 建立可重复的 Agent 评测",
+    "timebox": "见 PLAN S4-03 卡",
     "steps": [
-      "决定是否做上下文压缩（附加项）",
-      "验收：用户讲清模型输出与真实执行状态哪个可信",
-      "记录并判定 S4-02 状态"
+      "读卡片和移植包 E 并确认分工",
+      "按卡片推进"
     ],
-    "stop_when": "按 PLAN S4-02 通过标准。"
+    "stop_when": "按 PLAN S4-03 通过标准。"
   },
   "known_blockers": [],
   "future_requirements": [
@@ -32,7 +31,8 @@
     "S3-03 起的账户写入需要用户本地 Bangumi 凭据，S3-04 的真实写入需要用户对具体预览批准。",
     "模型：DeepSeek 已做手机端协议实验；完整 Agent 在 S4，第二家在 S4-05。真实调用使用用户自己的 Key 和费用。",
     "S7 需要用户自己邀请测试者；公开发布需另行授权。",
-    "S4-04 的 LangGraph 只用于 Python/服务端路线，开工时再核对版本。"
+    "S4-04 的 LangGraph 只用于 Python/服务端路线，开工时再核对版本。",
+    "上下文压缩（S4-02 附加项）未做：建议挂到 S4-03 之后或 S5；移植包 D 可用，token 来源用上一次回复的 usage。"
   ],
   "tasks": [
     {
@@ -226,16 +226,17 @@
     },
     {
       "id": "S4-02",
-      "status": "verify",
+      "status": "done",
       "evidence": [
         "docs/LOG.md#s4-02"
       ],
-      "learning": "not_checked",
-      "blocker": null
+      "learning": "can_modify",
+      "blocker": null,
+      "learning_scope": "亲手写 run_task 的取消检查点和 settle_plan_on_cancel 并做变异检查；事件和规则由用户定；事件发出、会话层、确认接口、上下文限额由助手写。"
     },
     {
       "id": "S4-03",
-      "status": "planned",
+      "status": "ready",
       "evidence": [],
       "learning": "not_checked",
       "blocker": null
