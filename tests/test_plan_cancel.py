@@ -17,12 +17,15 @@ class FakePlans:
     after_check: the status check() finds on the site.
     moved_on_to: if set, the plan changes to this status just before cancel() looks at it,
     as if another thread had started executing in between; cancel() then refuses.
+    cancel_broken: cancel() refuses every time although the plan still reads as approved.
     """
 
-    def __init__(self, status: str, after_check: str = "verified", moved_on_to: str | None = None):
+    def __init__(self, status: str, after_check: str = "verified", moved_on_to: str | None = None,
+                 cancel_broken: bool = False):
         self.status = status
         self.after_check = after_check
         self.moved_on_to = moved_on_to
+        self.cancel_broken = cancel_broken
         self.calls: list[str] = []
 
     def _plan(self) -> dict[str, Any]:
@@ -34,6 +37,8 @@ class FakePlans:
 
     def cancel(self, plan_id: str) -> dict[str, Any]:
         self.calls.append("cancel")
+        if self.cancel_broken:
+            raise PlanError("计划状态已被其他操作改变，请重新查看")
         if self.moved_on_to is not None:
             self.status, self.moved_on_to = self.moved_on_to, None
         if self.status not in ("draft", "approved"):
@@ -100,6 +105,14 @@ class SettlePlanOnCancel(unittest.TestCase):
         outcome = settle_plan_on_cancel(plans, PLAN_ID)
 
         self.assertEqual((outcome.action, outcome.plan["status"]), ("reported", "verified"))
+        self.assertNotIn("check", plans.calls)
+
+    def test_cancel_failing_twice_is_raised_not_guessed(self):
+        plans = FakePlans("approved", cancel_broken=True)
+        with self.assertRaises(PlanError):
+            settle_plan_on_cancel(plans, PLAN_ID)
+
+        self.assertEqual(plans.calls.count("cancel"), 2)  # one retry after re-reading, then give up
         self.assertNotIn("check", plans.calls)
 
 

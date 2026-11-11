@@ -40,12 +40,16 @@ def run_task(model: ChatModel, tools: Tools, system: str, messages: list[Message
 
     cancel: S4-02, to be handled by the user; tests/test_agent_cancel.py is the spec.
     """
+    def cancelled() -> bool:
+        return cancel is not None and cancel.is_set()
 
     if max_rounds < 1:
         raise ValueError(f"最大轮数应当是正整数")
     loop_rounds = 0
     cut_count = 0
     while True:
+        if cancelled():
+            return LoopResult("cancelled", "", loop_rounds)
         if loop_rounds + 1 == max_rounds:
             messages.append(Message("user", [TextBlock(SUMMARY_REQUEST)]))
             model_response = model.complete(system,messages,tools.specs(),allow_tools = False)
@@ -57,6 +61,13 @@ def run_task(model: ChatModel, tools: Tools, system: str, messages: list[Message
         model_response = model.complete(system,messages,tools.specs(),allow_tools = True)
         messages.append(model_response.message)
         loop_rounds += 1
+
+        if cancelled():
+            calls = tool_calls_of(model_response.message)
+            if len(calls) != 0:
+                messages.append(Message("tool",[*refuse_tool_calls(calls, CANCELLED_TOOL)]))
+            return LoopResult("cancelled", text_of(model_response.message), loop_rounds)
+
         if model_response.stop == "end":
             status = "done"
             return LoopResult(status,text_of(model_response.message),loop_rounds)
@@ -65,7 +76,9 @@ def run_task(model: ChatModel, tools: Tools, system: str, messages: list[Message
             calls = tool_calls_of(model_response.message)
             # [*x] copies the results into a new list; Pylance rejects passing list[ToolResultBlock]
             # itself where list[Block] is expected.
-            messages.append(Message("tool",[*execute_tool_calls(calls,tools)]))
+            messages.append(Message("tool",[*execute_tool_calls(calls,tools,cancel)]))
+            if cancelled():
+                return LoopResult("cancelled", text_of(model_response.message), loop_rounds)
         elif model_response.stop == "max_tokens":
             calls = tool_calls_of(model_response.message)
             if len(calls) != 0:

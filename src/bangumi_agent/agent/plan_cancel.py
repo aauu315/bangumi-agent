@@ -6,7 +6,7 @@ an "executing" plan seen here is one whose outcome nobody has recorded yet.
 """
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
-
+from bangumi_agent.storage import PlanError
 
 class PlanService(Protocol):
     """The part of confirmation.ExecutionService this module may use. There is no execute or approve here."""
@@ -38,4 +38,27 @@ class CancelOutcome:
 
 def settle_plan_on_cancel(service: PlanService, plan_id: str) -> CancelOutcome:
     """Decide and carry out what a task cancel means for one plan."""
-    raise NotImplementedError("S4-02：由用户实现")
+    plan = service.get(plan_id)
+    status = plan["status"]
+    try_again = False
+    while True:
+        if status == "draft":
+            action = "kept"
+        elif status == "approved":
+            action = "voided"
+            try:
+                plan = service.cancel(plan_id)
+            except PlanError:
+                if not try_again:
+                    try_again = True
+                    plan = service.get(plan_id)
+                    status = plan["status"]
+                    continue
+                else:
+                    raise
+        elif status == "executing" or status == "unknown":
+            action = "checked"
+            plan = service.check(plan_id)
+        else:
+            action = "reported"
+        return CancelOutcome(action,plan)
