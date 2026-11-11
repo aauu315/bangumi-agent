@@ -1368,7 +1368,10 @@ Python AST语法检查通过；ID=0已实际在参数解析阶段被拒绝，没
 - `PATCH /p1/collections/episodes/{episodeID}` 的 `batch` 字段说明是“看到当前章节”，即网页按钮对应的接口；S3-07 已用公开 API 的批量修改实现同样效果。
 
 ## 开发流水
-## 2026-11-11 · S4-03 第 1 步- 分工和评分规则已定；20 个用例冻结在 evals/20-cases.json，格式说明 evals/README.md，格式校验 tests/test_eval_cases.py。182 项测试通过，pyright 0 报错。
+
+## 2026-11-11 · S4-03 第 1 步
+
+- 分工和评分规则已定；20 个用例冻结在 evals/20-cases.json，格式说明 evals/README.md，格式校验 tests/test_eval_cases.py。182 项测试通过，pyright 0 报错。
 
 ## 2026-11-11 · 上下文压缩单独立为 S4-07（维护对话）
 
