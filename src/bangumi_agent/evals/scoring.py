@@ -48,17 +48,65 @@ def score_tools(expect: dict[str, Any], calls: list[ToolCall]) -> ToolScore:
 
     # 1. required_tools: 每一项必须被调用过；某一项是 list 时，其中任一个被调用过就算满足。
     #    问题的 tool 写那个工具名；是 list 时写成 "A 或 B"。
+    toolcalls = []
+    for call in calls:
+        toolcalls.append(call.name)
+    for require in expect["required_tools"]:
+        if not isinstance(require, list):
+            if require not in toolcalls:
+                problems.append(Problem(MISSING_TOOL, require, f"没有调用{require}"))
+        else:
+            appeared = False
+            for tool in require:
+                if tool in toolcalls:
+                    appeared = True
+                    break
+            if not appeared:
+                problems.append(Problem(MISSING_TOOL, "或".join(require), f"没有调用{require}"))
 
     # 2. order: 每一对 [A, B]，B 第一次被调用之前，A 至少被调用过一次。
     #    B 根本没被调用：这一对不算错（缺不缺由第 1 项管）。
 
-    # 3. 预览类工具（PREVIEW_TOOLS）中不在 allowed_previews 里的，每出现一个记一条。
+    for an_order in expect["order"]:
+        appeared = False
+        for tool in toolcalls:
+            if an_order[0] == tool:
+                appeared = True
+            elif not appeared and tool == an_order[1]:
+                problems.append(Problem(WRONG_ORDER, an_order[1], f"{an_order[1]}不能在{an_order[0]}之前"))
+                break
+
+    # 3. 预览类工具（PREVIEW_TOOLS）中不在 allowed_previews 里的，每种工具记一条，调用次数写进 detail。
     #    只读工具多调用不算错。
 
+    allowed_previews = expect["allowed_previews"]
+    for toolcall in PREVIEW_TOOLS:
+        if toolcall in toolcalls and toolcall not in allowed_previews:
+            problems.append(Problem(UNEXPECTED_PREVIEW, toolcall, f"不允许调用{toolcall},已调用{toolcalls.count(toolcall)}次"))
+    
+
     # 4. max_calls: {工具名: 上限}，调用次数超过上限记一条。
+
+    max_calls = expect["max_calls"]
+    if len(max_calls) != 0:
+        for tool, times in max_calls.items():
+            if tool in toolcalls and toolcalls.count(tool) > times:
+                problems.append(Problem(TOO_MANY_CALLS, tool, f"调用{tool}超过上限次数"))
+
 
     # 5. preview_args 不是 None 时：每一次允许的预览调用，它的参数都要包含 preview_args 的所有键，
     #    值也相等；多出来的键不管。不符合的每次记一条。
 
-    raise NotImplementedError("S4-03：由用户实现")
+    preview_args = expect["preview_args"]
+    if preview_args is not None:
+        tool_argument = []
+        for call in calls:
+            if call.name in allowed_previews:
+                
+                #tool_argument.append(call)
+                for key, value in preview_args.items():
+                    if key not in call.arguments or call.arguments[key] != value:
+                        problems.append(Problem(WRONG_PREVIEW_ARGS, call.name, f"{key}值调用不正确"))
+                        break
+
     return ToolScore(problems)
