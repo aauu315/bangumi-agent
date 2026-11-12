@@ -101,6 +101,11 @@ class Order(unittest.TestCase):
         run = calls("get_episodes", "search_subjects", "get_episodes")
         self.assertEqual(kinds(score_tools(self.RULE, run).problems), [(WRONG_ORDER, "get_episodes")])
 
+    def test_one_problem_per_pair(self):
+        # B twice before A is still one broken [A, B] pair.
+        run = calls("get_episodes", "get_episodes", "search_subjects")
+        self.assertEqual(kinds(score_tools(self.RULE, run).problems), [(WRONG_ORDER, "get_episodes")])
+
 
 class Previews(unittest.TestCase):
     def test_preview_not_allowed(self):
@@ -111,10 +116,18 @@ class Previews(unittest.TestCase):
 
     def test_wrong_kind_of_preview(self):
         # Case 3-2: "watched up to 10" must not become single-episode previews, one per episode.
+        # One problem per tool, however many times it was called; the count goes in the detail.
         rule = expect(previews=["preview_watched_up_to"])
-        run = calls("preview_episode_watched", "preview_episode_watched")
-        self.assertEqual(kinds(score_tools(rule, run).problems),
-                         [(UNEXPECTED_PREVIEW, "preview_episode_watched")] * 2)
+        run = calls(*["preview_episode_watched"] * 10)
+        problems = score_tools(rule, run).problems
+        self.assertEqual(kinds(problems), [(UNEXPECTED_PREVIEW, "preview_episode_watched")])
+        self.assertIn("10", problems[0].detail)
+
+    def test_two_kinds_not_allowed(self):
+        run = calls("preview_episode_watched", "preview_episode_change", "preview_episode_watched")
+        self.assertEqual(kinds(score_tools(expect(), run).problems),
+                         [(UNEXPECTED_PREVIEW, "preview_episode_change"),
+                          (UNEXPECTED_PREVIEW, "preview_episode_watched")])
 
 
 class MaxCalls(unittest.TestCase):
