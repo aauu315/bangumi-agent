@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-11",
+  "updated_at": "2026-11-12",
   "project_root": "E:\\myproject\\bangumi-agent",
   "primary_delivery": "local_android_apk_byok",
   "backend_role": "optional_for_users_required_for_full_portfolio",
@@ -11,19 +11,18 @@
     "网站内部 API 的 Cookie 会话和网页适配尚未调查。"
   ],
   "current_stage": "S4",
-  "current_task": "S4-03",
-  "next_task": "S4-03",
-  "next_action": "S4-03 第 2 步：用户在 src/bangumi_agent/evals/scoring.py 写 score_tools，直到 tests/test_eval_scoring.py 通过。",
+  "current_task": "S4-06",
+  "next_task": "S4-06",
+  "next_action": "S4-06 开工时先读任务卡和移植包 F，与用户确定信任模式允许免确认的操作、开启方式及提示注入限制。",
   "implementation_baseline": "已实现：匿名搜索/详情/章节/角色/人物/关联/每日放送查询；本人身份、收藏、章节状态只读查询；单集、看到第 N 集和任意目标状态的章节修改，均走预览→人工确认（命令行或 MCP 弹窗）→执行→读回；MCP 工具（模型不能代替用户确认）；Android 实验 APK（Chaquopy 共享 Python，已在小米 14 上跑通公开查询和 DeepSeek 调用）；Agent 内部消息类型、工具循环 run_task（用户写）、独立的工具执行层 tool_execution（S4-R 从旧项目移植）、Anthropic 格式转换层（DeepSeek 与 Anthropic 官方共用）和进程内工具注册，电脑和小米 14 上都已用 DeepSeek 真实只读调用跑通（手机只接了 3 个公开查询工具）。Agent 事件、会话层（取消、用户确认、上下文限额）只有离线测试。未实现：OpenAI 格式转换层、产品化手机界面、FastAPI、LangGraph。",
-  "last_update_summary": "2026-11-11 S4-03 第 2 步：评分函数的失败测试 15 项和留空骨架已写好，等用户实现 score_tools。",
+  "last_update_summary": "2026-11-12 S4-03 验收完成：固定对照 20/20，真实 DeepSeek 原报告 4/6、模拟写入 0；用户完成失败用例练习并确认样本范围。",
   "next_session": {
-    "goal": "S4-03 建立可重复的 Agent 评测",
-    "timebox": "见 PLAN S4-03 卡",
+    "goal": "S4-06 可选的信任模式",
+    "timebox": "见 PLAN S4-06 卡",
     "steps": [
-      "读卡片和移植包 E 并确认分工",
-      "按卡片推进"
+      "读任务卡和移植包 F，确认免确认边界与教学分工"
     ],
-    "stop_when": "按 PLAN S4-03 通过标准。"
+    "stop_when": "按 PLAN S4-06 通过标准。"
   },
   "known_blockers": [],
   "future_requirements": [
@@ -96,6 +95,13 @@
         "docs/LOG.md#s1-04"
       ],
       "learning": "can_modify",
+      "blocker": null
+    },
+    {
+      "id": "S1-05",
+      "status": "ready",
+      "evidence": [],
+      "learning": "not_applicable",
       "blocker": null
     },
     {
@@ -236,12 +242,14 @@
     },
     {
       "id": "S4-03",
-      "status": "active",
+      "status": "done",
       "evidence": [
         "docs/LOG.md#s4-03",
-        "evals/20-cases.json"
+        "evals/20-cases.json",
+        "tests/test_eval_runner.py"
       ],
-      "learning": "not_checked",
+      "learning": "can_modify",
+      "learning_scope": "亲手写完 score_tools，为 spare-1 写工具顺序和两条详情规则；助手补简介并验证。用户复盘 3-3 和 4-1，确认真实评测统计取自固定 20 题中的 6 题。",
       "blocker": null
     },
     {
@@ -260,7 +268,7 @@
     },
     {
       "id": "S4-06",
-      "status": "planned",
+      "status": "ready",
       "evidence": [],
       "learning": "not_checked",
       "blocker": null

@@ -1455,6 +1455,44 @@
             ],
             "next_offset": null
           }
+        },
+        {
+          "tool": "get_my_episode_states",
+          "when": {"subject_id": 278826},
+          "result": {
+            "total": 25,
+            "limit": 40,
+            "offset": 0,
+            "next_offset": null,
+            "complete": true,
+            "data": [
+              {"episode_id": 2788001, "sort": 1, "ep": 1, "episode_type": 0, "name": "第1话", "name_cn": "第1话", "type": 2},
+              {"episode_id": 2788002, "sort": 2, "ep": 2, "episode_type": 0, "name": "第2话", "name_cn": "第2话", "type": 2},
+              {"episode_id": 2788003, "sort": 3, "ep": 3, "episode_type": 0, "name": "第3话", "name_cn": "第3话", "type": 0},
+              {"episode_id": 2788004, "sort": 4, "ep": 4, "episode_type": 0, "name": "第4话", "name_cn": "第4话", "type": 0},
+              {"episode_id": 2788005, "sort": 5, "ep": 5, "episode_type": 0, "name": "第5话", "name_cn": "第5话", "type": 0},
+              {"episode_id": 2788006, "sort": 6, "ep": 6, "episode_type": 0, "name": "第6话", "name_cn": "第6话", "type": 0},
+              {"episode_id": 2788007, "sort": 7, "ep": 7, "episode_type": 0, "name": "第7话", "name_cn": "第7话", "type": 0},
+              {"episode_id": 2788008, "sort": 8, "ep": 8, "episode_type": 0, "name": "第8话", "name_cn": "第8话", "type": 0},
+              {"episode_id": 2788009, "sort": 9, "ep": 9, "episode_type": 0, "name": "第9话", "name_cn": "第9话", "type": 0},
+              {"episode_id": 2788010, "sort": 10, "ep": 10, "episode_type": 0, "name": "第10话", "name_cn": "第10话", "type": 0},
+              {"episode_id": 2788011, "sort": 11, "ep": 11, "episode_type": 0, "name": "第11话", "name_cn": "第11话", "type": 0},
+              {"episode_id": 2788012, "sort": 12, "ep": 12, "episode_type": 0, "name": "第12话", "name_cn": "第12话", "type": 0},
+              {"episode_id": 2788013, "sort": 13, "ep": 13, "episode_type": 0, "name": "第13话", "name_cn": "第13话", "type": 0},
+              {"episode_id": 2788014, "sort": 14, "ep": 14, "episode_type": 0, "name": "第14话", "name_cn": "第14话", "type": 0},
+              {"episode_id": 2788015, "sort": 15, "ep": 15, "episode_type": 0, "name": "第15话", "name_cn": "第15话", "type": 0},
+              {"episode_id": 2788016, "sort": 16, "ep": 16, "episode_type": 0, "name": "第16话", "name_cn": "第16话", "type": 0},
+              {"episode_id": 2788017, "sort": 17, "ep": 17, "episode_type": 0, "name": "第17话", "name_cn": "第17话", "type": 0},
+              {"episode_id": 2788018, "sort": 18, "ep": 18, "episode_type": 0, "name": "第18话", "name_cn": "第18话", "type": 0},
+              {"episode_id": 2788019, "sort": 19, "ep": 19, "episode_type": 0, "name": "第19话", "name_cn": "第19话", "type": 0},
+              {"episode_id": 2788020, "sort": 20, "ep": 20, "episode_type": 0, "name": "第20话", "name_cn": "第20话", "type": 0},
+              {"episode_id": 2788021, "sort": 21, "ep": 21, "episode_type": 0, "name": "第21话", "name_cn": "第21话", "type": 0},
+              {"episode_id": 2788022, "sort": 22, "ep": 22, "episode_type": 0, "name": "第22话", "name_cn": "第22话", "type": 0},
+              {"episode_id": 2788023, "sort": 23, "ep": 23, "episode_type": 0, "name": "第23话", "name_cn": "第23话", "type": 0},
+              {"episode_id": 2788024, "sort": 24, "ep": 24, "episode_type": 0, "name": "第24话", "name_cn": "第24话", "type": 0},
+              {"episode_id": 2788025, "sort": 25, "ep": 25, "episode_type": 0, "name": "第25话", "name_cn": "第25话", "type": 0}
+            ]
+          }
         }
       ],
       "expect": {
@@ -1698,7 +1736,6 @@
         "required_tools": [
           "search_subjects",
           "get_episodes",
-          "get_my_episode_states",
           "preview_episode_change"
         ],
         "order": [
@@ -1708,10 +1745,6 @@
           ],
           [
             "get_episodes",
-            "preview_episode_change"
-          ],
-          [
-            "get_my_episode_states",
             "preview_episode_change"
           ]
         ],
@@ -1811,6 +1844,54 @@
             "rank": 1,
             "images": null,
             "url": "https://bgm.tv/subject/400602"
+          }
+        },
+        {
+          "tool": "get_subject_persons",
+          "when": {"subject_id": 400602, "relation": "导演"},
+          "result": {
+            "total": 1,
+            "limit": 30,
+            "offset": 0,
+            "next_offset": null,
+            "data": [
+              {"person_id": 640001, "name": "示例导演", "relation": "导演", "eps": null}
+            ]
+          }
+        },
+        {
+          "tool": "get_subject_characters",
+          "when": {"subject_id": 400602},
+          "result": {
+            "total": 1,
+            "limit": 10,
+            "offset": 0,
+            "next_offset": null,
+            "data": [
+              {
+                "character_id": 650001,
+                "name": "芙莉莲",
+                "relation": "主角",
+                "actors": [{"person_id": 640002, "name": "示例配音演员"}]
+              }
+            ]
+          }
+        },
+        {
+          "tool": "get_subject_relations",
+          "when": {"subject_id": 400602},
+          "result": {
+            "total": 1,
+            "data": [
+              {
+                "subject_id": 400603,
+                "name": "葬送のフリーレン",
+                "name_cn": "葬送的芙莉莲",
+                "relation": "原作",
+                "type": 1,
+                "url": "https://bgm.tv/subject/400603"
+              }
+            ]
           }
         }
       ],
@@ -2425,13 +2506,55 @@
               }
             ]
           }
+        },
+        {
+          "tool": "get_subject",
+          "when": {"subject_id": 400602},
+          "result": {
+            "id": 400602,
+            "name": "葬送のフリーレン",
+            "name_cn": "葬送的芙莉莲",
+            "type": 2,
+            "summary": "打倒魔王的勇者一行解散后，精灵魔法使芙莉莲踏上了新的旅程。",
+            "date": "2023-09-29",
+            "eps": 28,
+            "total_episodes": 28,
+            "rating": {
+              "score": 9.1,
+              "total": 50000
+            },
+            "rank": 1,
+            "images": null,
+            "url": "https://bgm.tv/subject/400602"
+          }
+        },
+        {
+          "tool": "get_subject",
+          "when": {"subject_id": 530002},
+          "result": {
+            "id": 530002,
+            "name": "放課後の示例",
+            "name_cn": "放学后示例",
+            "type": 2,
+            "summary": "高中一年级的新生加入校广播社，和同学一起准备校园祭的特别节目。故事围绕他们的课堂、社团和放学后的校园生活展开。",
+            "date": null,
+            "eps": null,
+            "total_episodes": null,
+            "rating": {
+              "score": 7.2,
+              "total": 1000
+            },
+            "rank": null,
+            "images": null,
+            "url": "https://bgm.tv/subject/530002"
+          }
         }
       ],
       "expect": {
         "required_tools": [
-          "get_calendar"
+          "get_calendar", "get_subject"
         ],
-        "order": [],
+        "order": [["get_calendar", "get_subject"]],
         "allowed_previews": [],
         "max_calls": {},
         "plans": 0,
@@ -2439,7 +2562,11 @@
       },
       "answer_checks": [
         {
-          "rule": "现有工具不返回标签，不该自称按“校园”标签筛过；只能根据简介判断或说明查不到题材"
+          "rule": "根据简介选出《放学后示例》",
+          "must_include": ["放学后示例"]
+        },
+        {
+          "rule": "说明校园题材的简介依据，不把奇幻旅行的《葬送的芙莉莲》列为校园动画，也不声称按标签筛选"
         }
       ]
     }

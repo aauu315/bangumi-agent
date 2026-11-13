@@ -16,12 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from bangumi_agent.agent.anthropic_format import AnthropicModel, anthropic, deepseek
 from bangumi_agent.agent.events import Event
 from bangumi_agent.agent.model_keys import MissingKeyError, key_path, read_key, save_key
-from bangumi_agent.agent.session import AgentSession
+from bangumi_agent.agent.session import SYSTEM_PROMPT, AgentSession
 from bangumi_agent.agent.tool_registry import McpTools
-
-SYSTEM = ("你是 Bangumi 助手，用提供的工具回答用户关于番剧、条目和本人收藏的问题。"
-          "需要修改进度时只创建预览，并告诉用户要在界面上确认；不要声称已经修改。")
-
 
 def _show(event: Event) -> None:
     """Print one line per event: the readable summary first, short facts after it."""
@@ -95,7 +91,7 @@ def main() -> int:
     model = AnthropicModel(config, key)
     key = None
 
-    session = AgentSession(model, McpTools(), SYSTEM, _show, max_rounds=args.max_rounds)
+    session = AgentSession(model, McpTools(), SYSTEM_PROMPT, _show, max_rounds=args.max_rounds)
     outcome = session.send(args.question)
     state = session.state
     print()

@@ -23,6 +23,8 @@ from .tool_execution import HIDDEN_ERROR
 # Stop before the next request once the last one used this many tokens (input + output).
 # Both providers allow far more (1M); this keeps a runaway history from costing a lot.
 DEFAULT_CONTEXT_LIMIT = 200_000
+SYSTEM_PROMPT = ("你是 Bangumi 助手，用提供的工具回答用户关于番剧、条目和本人收藏的问题。"
+                 "需要修改进度时只创建预览，并告诉用户要在界面上确认；不要声称已经修改。")
 
 CONTEXT_FULL = "这次对话已经太长，不能再继续了。请开始一个新对话；之前查到的内容不会自动带过去。"
 ENDED_PLAN_STATUSES = ("cancelled", "expired", "rejected", "verified", "failed", "partial")

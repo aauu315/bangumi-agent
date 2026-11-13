@@ -2,6 +2,24 @@
 
 `20-cases.json` 是 S4-03 冻结的 20 个用例，每类 4 个。用例的大白话说明在 `docs/agent-evaluation.md`。
 
+## 运行评测
+
+在项目根目录运行。默认用假模型跑全部 20 例，报告输出到终端。
+
+```powershell
+.\.venv\Scripts\python.exe scripts/agent_eval.py
+```
+
+经确认后，可以用本机保存的 DeepSeek Key 跑 6 例真实模型评测，有 API 费用。两种模式都使用固定的 Bangumi 返回数据和临时草稿库。
+
+```powershell
+.\.venv\Scripts\python.exe scripts/agent_eval.py --deepseek --output work/deepseek-eval.json
+```
+
+`--case` 可重复传入以指定用例，`--model` 可指定 DeepSeek 模型名。报告记录模型名、各轮输入与回答、工具调用和错误、草稿状态、模拟写入次数、自动判定失败率和待人工核对的回答项。自动匹配通过后仍可对照 `rule` 核对回答意思。假模型的脚本回复用于检查评测流程，真实模型的结果只覆盖本次所选样本和固定数据。
+
+校园动画练习可单独离线运行：`.\.venv\Scripts\python.exe scripts/agent_eval.py --case spare-1`。
+
 ## 顶层
 
 | 字段 | 含义 |

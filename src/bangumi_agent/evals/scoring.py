@@ -88,10 +88,9 @@ def score_tools(expect: dict[str, Any], calls: list[ToolCall]) -> ToolScore:
     # 4. max_calls: {工具名: 上限}，调用次数超过上限记一条。
 
     max_calls = expect["max_calls"]
-    if len(max_calls) != 0:
-        for tool, times in max_calls.items():
-            if tool in toolcalls and toolcalls.count(tool) > times:
-                problems.append(Problem(TOO_MANY_CALLS, tool, f"调用{tool}超过上限次数"))
+    for tool, times in max_calls.items():
+        if toolcalls.count(tool) > times:
+            problems.append(Problem(TOO_MANY_CALLS, tool, f"调用{tool}超过上限次数"))
 
 
     # 5. preview_args 不是 None 时：每一次允许的预览调用，它的参数都要包含 preview_args 的所有键，
@@ -99,11 +98,8 @@ def score_tools(expect: dict[str, Any], calls: list[ToolCall]) -> ToolScore:
 
     preview_args = expect["preview_args"]
     if preview_args is not None:
-        tool_argument = []
         for call in calls:
             if call.name in allowed_previews:
-                
-                #tool_argument.append(call)
                 for key, value in preview_args.items():
                     if key not in call.arguments or call.arguments[key] != value:
                         problems.append(Problem(WRONG_PREVIEW_ARGS, call.name, f"{key}值调用不正确"))
